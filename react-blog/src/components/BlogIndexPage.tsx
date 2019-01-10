@@ -49,7 +49,7 @@ function BlogIndexPage({
           </a>
           <NavLink href="./about">About</NavLink> &bull;{' '}
           <NavLink href="./tags">Tags</NavLink> &bull;{' '}
-          <a href="https://github.com/frontarm/create-react-blog">
+          <a href="https://github.com/snakeUni/uni-blog">
             Source
           </a>
         </div>
