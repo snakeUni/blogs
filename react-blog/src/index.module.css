@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css?family=Merriweather:400,400i,700,700i,900|Montserrat:900');
 
 :root {
-  --primary-color: #d23669;
-  --primary-color-light: rgb(255, 167, 196);
+  --primary-color: rgb(54, 170, 202);
+  --primary-color-light: rgb(98, 218, 251);
 }
 
 :global * {
