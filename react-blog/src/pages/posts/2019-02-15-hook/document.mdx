@@ -1,0 +1,179 @@
+## why React Hooks
+
+React 在16.8.0的时候正式发布了[Hook](https://reactjs.org/docs/hooks-intro.html), 基础的hook有`useState`, `useReducer`, `useEffect`
+
+### Mouse Position
+这是一个获取鼠标位置的🌰, [mousePosition](https://codesandbox.io/s/xj0ppk0pzw)
+```jsx
+class MousePostion extends React.Component {
+  state = {
+    x: 0,
+    y: 0
+  }
+
+  componentDidMount() {
+    window.addEventListener('mousemove', this.mousemove)
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('mousemove', this.mousemove)
+  }
+
+  mousemove = (e) => {
+    this.setState({ x: e.clientX, y: e.clientY })
+  }
+
+  render() {
+    const { x, y } = this.state
+    return (
+      <span>
+        Mouse X: { x } Mouse Y: { y }
+      </span>
+    )
+  }
+}
+```
+如果我们想在其他的地方复用该组件，就要重写相同的代码  
+
+如果我们想拿到x, y的时候在去做其他的事情，那么我们就需要去修改这个代码。这个行为就被限制在这个组件里面了。
+
+### HOC
+用hoc来修改此组件，把x, y作为props传给任何需要用x, y的组件
+```jsx
+function withMouseHoc(ComponentWrap) {
+  return class Mouse extends React.Component {
+    state = {
+      x: 0,
+      y: 0
+    };
+
+    componentDidMount() {
+      window.addEventListener("mousemove", this.mousemove);
+    }
+
+    componentWillUnmount() {
+      window.removeEventListener("mousemove", this.mousemove);
+    }
+
+    mousemove = e => {
+      this.setState({ x: e.clientX, y: e.clientY });
+    };
+    render() {
+      return <ComponentWrap {...this.state} />;
+    }
+  };
+}
+
+class MouseHocDemo extends React.Component {
+  render() {
+    const { x, y } = this.props;
+    return (
+      <div>
+        MouseHoc X: {x}, MouseHoc Y: {y}
+      </div>
+    );
+  }
+}
+```
+此时我们把鼠标的行为通过hoc进行了一次封装，以后需要用到该行为的都可以完全复用。
+
+虽然这是更多的代码，但我们正在朝着正确的方向前进。它不再与订阅行为紧密耦合。
+
+如果我们想渲染一些不同的东西呢?我们总是需要做一个新的组件吗?
+### render props
+用render props来改写
+```jsx
+class MouseRenderProps extends React.Component {
+  state = {
+    x: 0,
+    y: 0
+  };
+
+  componentDidMount() {
+    window.addEventListener("mousemove", this.mousemove);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("mousemove", this.mousemove);
+  }
+
+  mousemove = e => {
+    this.setState({ x: e.clientX, y: e.clientY });
+  };
+  render() {
+    const { children } = this.props;
+    return children({ ...this.state });
+  }
+}
+
+class MouseRenderPropsDemo extends React.Component {
+  render() {
+    return (
+      <MouseRenderProps>
+        {({ x, y }) => {
+          return (
+            <div>
+              MouseRenderProps X: {x}, MouseRenderProps Y: {y}
+            </div>
+          );
+        }}
+      </MouseRenderProps>
+    );
+  }
+}
+```
+renderProps也可以解决之前mouse的问题,和HOC具有相同的功效
+
+这种细微的差别有一些非常棒的好处
+现在，提供x和y的功能非常明显，您还可以轻松地重命名它们，以防止名称冲突。  
+我们对渲染有灵活的控制。我们不需要创建新的组件，如果我们决定这样做，它只是一个简单的复制粘贴。  
+您可以在组件呈现函数中直接看到所有这些。新开发人员很容易识别它。  
+这种模式的主要问题是，您的组件必须在它们的呈现中嵌套许多这样的组件。一旦你开始嵌套多个渲染组件，你就很难推断出发生了什么。  
+同时，这也造成了一种错误的等级观念。仅仅因为一个行为“嵌套”在另一个行为之下，并不意味着它依赖于父行为
+
+*如果有一种方法可以拥有所有这些能力，以一种声明方式。👀*
+
+### Hook
+用 hook来改写
+```jsx
+function useMousePosition() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  useEffect(
+    () => {
+      const mousemove = e => {
+        setPosition({ x: e.clientX, y: e.clientY });
+      };
+      window.addEventListener("mousemove", mousemove);
+      return () => {
+        window.removeEventListener("mousemove", mousemove);
+      };
+    },
+    [setPosition]
+  );
+  return position;
+}
+
+function MouseHook() {
+  const position = useMousePosition();
+  return (
+    <div>
+      MouseHook X: {position.x}, MouseHook Y: {position.y}
+    </div>
+  );
+}
+```
+这就是我想要的一切。
+
+不仅行为在它自己整洁的小程序包中，useEffect还阻止它分散在三个不同的生命周期钩子中
+组件从哪里获取数据是非常清晰的，它被整齐地放置在render函数中。
+无论我需要引入多少这样的代码，我的代码都不会变得越来越嵌套。
+
+**但是 当使用hooks的时候也要遵守一些[原则](https://reactjs.org/docs/hooks-rules.html)**
+
+### Final
+虽然hooks的出现带来了很多的便利，但是先不要急着去改写已有项目中的代码，
+有可能后续部分hook还会发生改变，也有可能还存在某些问题，也有可能某些情况下是hook无法处理的。
+
+虽然对于hook的利弊我还不太理解，但是我敢于去尝试，如果有愿意一起玩的，也可以联系我。
+
