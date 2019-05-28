@@ -1,0 +1,448 @@
+Hooks vs Class
+
+React 释放 `hooks` 已经半年了，从 hooks 刚刚释放的时候我就开始关注，并且就开始去尝试使用它。 从释放到现在 hooks 刚过不少， 内部源码至少改了两三次， 那为什么要写这篇文章呢 ？ 是因为一次偶然的事情引发的。 有一天`渊虹`老哥抱着电脑对我说， 你看我这个表单的提交时间就是在调用 `onSubmit` 的时候有点延迟啊， 这是为什么呀? 我试了一下果然是这样， 很奇怪了，为什么会这样呢 ? 于是我想到的第一个问题就是难道我把`同步当做异步处理`导致的？ 还是有可能的啊，于是我在群里问了这样的一个问题
+
+<img src="https://user-images.githubusercontent.com/17973020/58377052-f8fcdd80-7faa-11e9-9755-773651feb5a1.png" height="500"/>
+<img src="https://user-images.githubusercontent.com/17973020/58377171-0ca94380-7fad-11e9-9030-cd2a7d5fe676.png" height="500"/>
+
+于是我就在第二天跑了一下，试试同步当做异步处理的话，会造成多少的延迟。当数量`小于100个`时候，简单的函数同步异步时间基本一致，1000 个的时候时间就有一些小的差距了， 10000 个的时候差距非常明显， `所以必要的时候，同步还是同步，不要当做异步来处理了`, 那一个 `form` 内部超过 100 个校验函数基本不可能，所以这个方面我就忽略了, 那会不会是另外一种可能呢？
+
+## render 时间长且次数多导致的延迟
+
+再一次分析了`渊虹`老哥的代码，发现在提交表单的时候，`render` 了四次，于是我去查了下源码，发现这四次分别是，`校验设置错误` => `设置提交状态` => `设置表单是否有效` => `设置提交次数`, 然后在调用 `onSubmit`， 哎呀这个地方有有待修改的，比如可以改成这样 `设置提交状态` => `如果有效，调用 onSubmit 在设置有效状态和提交次数`。 否则在 `设置错误和状态`， 这样呢就能保证 `onSubmit` 的提交只有一次 `setState` 的操作，看下代码的截图
+
+之前的提交
+
+![d97dca23](https://user-images.githubusercontent.com/17973020/58377128-31e98200-7fac-11e9-8627-685ce89c7ccf.png)
+
+修改后的提交
+
+![fc8f38a3](https://user-images.githubusercontent.com/17973020/58377137-52194100-7fac-11e9-9503-dfc0e707c492.png)
+
+这样在 `onSubmit` 之前就会调用的很快， 即使 `render` 很耗时
+
+那肯定会有人提出来这样的问题， render 时间长这个是业务代码中的问题导致的， 那么 `render` 次数过多这是为什么呢？为什么这里会 `render` 这么多次呢 ？那从这里就引起今天这个话题了？ `class vs hooks`
+
+代码点击这里 => [hooks vs class - CodeSandbox](https://codesandbox.io/s/hooks-vs-class-5buww)
+
+最简单的就是在事件中来测试区别。`hooks and class` 的 `increase` 事件都是同步的，我们在点击 `increasement` 的按钮的时候打开控制台看下输出是什么
+
+![45965b8f](https://user-images.githubusercontent.com/17973020/58377138-65c4a780-7fac-11e9-9267-9b40f275e8c5.png)
+
+可以看到 `console` 的顺序是先输出了事件调用中的 `console`， 在输出了 `render` 中的 `console`， 这个大家都是知道的， `setState` 是[异步的](https://reactjs.org/docs/faq-state.html#when-is-setstate-asynchronous) , 修改下代码，在这个事件函数里多次 `setState` 会怎么样呢？结果输出还是一样呢？对于这样是为什么，可以看[官网](https://reactjs.org/docs/state-and-lifecycle.html#state-updates-may-be-asynchronous)以及[setState 解析](https://juejin.im/post/5b45c57c51882519790c7441)，
+在点击 `increaseBy` 按钮，这个和 `decrease` 是一样的， 所以我们只取一个来分析， 点击 `increaseBy` 按钮后看下控制台的输出
+
+`class` 中的 `increase`
+
+```js
+increaseBy = number => {
+  setTimeout(() => {
+    this.setState({ count: this.state.count + number });
+    this.setState({ count: this.state.count + number });
+    this.setState({ count: this.state.count + number });
+    this.setState({ count: this.state.count + number });
+    console.log("fire increaseBy class", this.state.count);
+  }, 1000);
+};
+```
+
+`hooks` 中的 `increase`
+
+```js
+const increaseBy = number => {
+  setTimeout(() => {
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    console.log("fire increaseBy hook", count);
+  }, 1000);
+};
+```
+
+看下控制台的输出
+
+![e5a1163b](https://user-images.githubusercontent.com/17973020/58377148-7ecd5880-7fac-11e9-8686-523fb69f01d7.png)
+
+`hooks` render 的次数是两次，然而在 class 中 render 了 四次，这是为什么呢？看起来很奇怪是不是。那我们不妨在 `hooks` 中在增加几个看看怎么样?
+
+```js
+const increaseBy = number => {
+  setTimeout(() => {
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    console.log("fire increaseBy hook", count);
+  }, 1000);
+};
+```
+
+在看下控制台的输出
+
+![2e4c8768](https://user-images.githubusercontent.com/17973020/58377153-8bea4780-7fac-11e9-8757-52307d8b6463.png)
+
+完全一样，那我们不妨修改下，在 `hooks` 中每次都设置不一样的值看看会发生什么
+
+```js
+const increaseBy = number => {
+  setTimeout(() => {
+    setCount(1);
+    setCount(2);
+    setCount(3);
+    setCount(4);
+    console.log("fire increaseBy hook", count);
+  }, 1000);
+};
+```
+
+输出如下
+
+![47307b50](https://user-images.githubusercontent.com/17973020/58377157-986ea000-7fac-11e9-88d3-ca0bbd31882c.png)
+
+这次是一致了对不对， 都是 `render` 了 4 次后才调用 `console` 的，至于在 class 中为什么表现是这样的看[上面的文章](https://juejin.im/post/5b45c57c51882519790c7441)
+
+那在 `hooks` 中为什么会表现的如此不一致呢？ [官网](https://reactjs.org/docs/hooks-reference.html#bailing-out-of-a-state-update)也贴了出来
+
+![dccae51f](https://user-images.githubusercontent.com/17973020/58377158-a6bcbc00-7fac-11e9-9b78-54572ac17b52.png)
+
+会用 `Objest.is` 会进行比较，如果认为是一样的，那么就会 `bailout`, 有的人可能会和我有一样的想法，当初我在看这个时候，我觉得在调用第二次 `render` 的时候就知道是一样的了，那应该不会在到 `commit` 阶段了吧。我们不妨来试试
+
+在 `hooks` 加上这段代码
+
+```js
+useEffect(() => {
+  console.log("update hook");
+});
+```
+
+在 class 中也加上这段代码
+
+```js
+componentDidUpdate() {
+  console.log("update class");
+}
+```
+
+`hooks` 中的 `increase`
+
+```js
+const increaseBy = number => {
+  setTimeout(() => {
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    setCount(count + number);
+    console.log("fire increaseBy hook", count);
+  }, 1000);
+};
+```
+
+`class` 中的 `increase`
+
+```js
+increaseBy = number => {
+  setTimeout(() => {
+    this.setState({ count: this.state.count + number });
+    this.setState({ count: this.state.count + number });
+    this.setState({ count: this.state.count + number });
+    this.setState({ count: this.state.count + number });
+    console.log("fire increaseBy class", this.state.count);
+  }, 1000);
+};
+```
+
+此时在点击 `increaseBy` 按钮看下输出如何？
+
+![77290f12](https://user-images.githubusercontent.com/17973020/58377167-da97e180-7fac-11e9-930d-74da2f014e1e.png)
+
+果真是这样的， 在 `hooks` 中第二次执行 `render` 并不会在去执行 `commit` 了，只在第一次 `render` 的时候执行了 `commit`， 然而 `class` 中却每次都执行了。
+
+有的同学会问执行 `setCount` 的时候内部源码肯定都会去执行， 那为啥不是 `4` 次 `render`， `一次 commit` 呢 ？那我们来看下源码为什么会出现这种情况？
+
+在 `调用 setCount` 的时候会调用源码中的 `dispatch`函数，在第一次调用的时候
+
+```js
+setCount(count + number);
+```
+
+`count + number = 2` 结果是 `2` 不等于上一次的 `0`, 所以会走到 `updateReducer`,
+在 `updateReducer` 里面会进行比较
+
+```js
+if (!is(_newState, hook.memoizedState)) {
+  markWorkInProgressReceivedUpdate();
+}
+```
+
+如果不相同会如何， 会进行标记 `didReceiveUpdate`, 把 `didReceiveUpdate` 标记为 `true`
+
+```js
+function markWorkInProgressReceivedUpdate() {
+  didReceiveUpdate = true;
+}
+```
+
+如果为 `true`，会进行更新。对于 `didReceiveUpdate` 的其他标记是在 `beginWork` 函数中.
+
+```js
+function beginWork(current$$1, workInProgress, renderExpirationTime) {
+  var updateExpirationTime = workInProgress.expirationTime;
+
+  if (current$$1 !== null) {
+    var oldProps = current$$1.memoizedProps;
+    var newProps = workInProgress.pendingProps;
+
+    if (oldProps !== newProps || hasContextChanged()) {
+      // If props or context changed, mark the fiber as having performed work.
+      // This may be unset if the props are determined to be equal later (memo).
+      didReceiveUpdate = true;
+    } else if (updateExpirationTime < renderExpirationTime) {
+      didReceiveUpdate = false;
+```
+
+这是第一次 `setCount`， 当第二次 setCount 的时候, `didReceiveUpdate` 为 `false`， 会走下面这段代码
+
+```js
+if (current$$1 !== null && !didReceiveUpdate) {
+  bailoutHooks(current$$1, workInProgress, renderExpirationTime);
+  return bailoutOnAlreadyFinishedWork(
+    current$$1,
+    workInProgress,
+    renderExpirationTime
+  );
+}
+```
+
+这段代码在好几处都有， 其中一处就是在 `updateFunctionComponent` 这个函数中。那么 `bailoutHooks` 做了什么 ?
+
+```js
+function bailoutHooks(current, workInProgress, expirationTime) {
+  workInProgress.updateQueue = current.updateQueue;
+  workInProgress.effectTag &= ~(Passive | Update);
+  if (current.expirationTime <= expirationTime) {
+    current.expirationTime = NoWork;
+  }
+}
+```
+
+`WIP` 的 `updateQueue` 更新为 `current` 的 `updateQueue`
+
+`bailoutOnAlreadyFinishedWork`
+
+```js
+function bailoutOnAlreadyFinishedWork(
+  current$$1,
+  workInProgress,
+  renderExpirationTime
+) {
+  cancelWorkTimer(workInProgress);
+
+  if (current$$1 !== null) {
+    // Reuse previous context list
+    workInProgress.contextDependencies = current$$1.contextDependencies;
+  }
+
+  if (enableProfilerTimer) {
+    // Don't update "base" render times for bailouts.
+    stopProfilerTimerIfRunning(workInProgress);
+  }
+
+  // Check if the children have any pending work.
+  var childExpirationTime = workInProgress.childExpirationTime;
+  if (childExpirationTime < renderExpirationTime) {
+    // The children don't have any work either. We can skip them.
+    // TODO: Once we add back resuming, we should check if the children are
+    // a work-in-progress set. If so, we need to transfer their effects.
+    return null;
+  } else {
+    // This fiber doesn't have work, but its subtree does. Clone the child
+    // fibers and continue.
+    cloneChildFibers(current$$1, workInProgress);
+    return workInProgress.child;
+  }
+}
+```
+
+当执行到第三次 `setCount` 的时候， 会被直接 `return` 代码在 `dispatchAction` 中,
+因为在 `queue.dispatch` 绑定了 `dispatchAction`
+
+```jsx(84)
+function dispatchAction(fiber, queue, action) {
+  !(numberOfReRenders < RE_RENDER_LIMIT)
+    ? invariant(
+        false,
+        "Too many re-renders. React limits the number of renders to prevent an infinite loop."
+      )
+    : void 0;
+
+  {
+    !(arguments.length <= 3)
+      ? warning$1(
+          false,
+          "State updates from the useState() and useReducer() Hooks don't support the " +
+            "second callback argument. To execute a side effect after " +
+            "rendering, declare it in the component body with useEffect()."
+        )
+      : void 0;
+  }
+
+  var alternate = fiber.alternate;
+  if (
+    fiber === currentlyRenderingFiber$1 ||
+    (alternate !== null && alternate === currentlyRenderingFiber$1)
+  ) {
+    // This is a render phase update. Stash it in a lazily-created map of
+    // queue -> linked list of updates. After this render pass, we'll restart
+    // and apply the stashed updates on top of the work-in-progress hook.
+    didScheduleRenderPhaseUpdate = true;
+    var update = {
+      expirationTime: renderExpirationTime,
+      action: action,
+      eagerReducer: null,
+      eagerState: null,
+      next: null
+    };
+    if (renderPhaseUpdates === null) {
+      renderPhaseUpdates = new Map();
+    }
+    var firstRenderPhaseUpdate = renderPhaseUpdates.get(queue);
+    if (firstRenderPhaseUpdate === undefined) {
+      renderPhaseUpdates.set(queue, update);
+    } else {
+      // Append the update to the end of the list.
+      var lastRenderPhaseUpdate = firstRenderPhaseUpdate;
+      while (lastRenderPhaseUpdate.next !== null) {
+        lastRenderPhaseUpdate = lastRenderPhaseUpdate.next;
+      }
+      lastRenderPhaseUpdate.next = update;
+    }
+  } else {
+    flushPassiveEffects();
+
+    var currentTime = requestCurrentTime();
+    var _expirationTime = computeExpirationForFiber(currentTime, fiber);
+
+    var _update2 = {
+      expirationTime: _expirationTime,
+      action: action,
+      eagerReducer: null,
+      eagerState: null,
+      next: null
+    };
+
+    // Append the update to the end of the list.
+    var _last = queue.last;
+    if (_last === null) {
+      // This is the first update. Create a circular list.
+      _update2.next = _update2;
+    } else {
+      var first = _last.next;
+      if (first !== null) {
+        // Still circular.
+        _update2.next = first;
+      }
+      _last.next = _update2;
+    }
+    queue.last = _update2;
+
+    if (
+      fiber.expirationTime === NoWork &&
+      (alternate === null || alternate.expirationTime === NoWork)
+    ) {
+      // The queue is currently empty, which means we can eagerly compute the
+      // next state before entering the render phase. If the new state is the
+      // same as the current state, we may be able to bail out entirely.
+      var _lastRenderedReducer = queue.lastRenderedReducer;
+      if (_lastRenderedReducer !== null) {
+        var prevDispatcher = void 0;
+        {
+          prevDispatcher = ReactCurrentDispatcher$1.current;
+          ReactCurrentDispatcher$1.current = InvalidNestedHooksDispatcherOnUpdateInDEV;
+        }
+        try {
+          var currentState = queue.lastRenderedState;
+          var _eagerState = _lastRenderedReducer(currentState, action);
+          // Stash the eagerly computed state, and the reducer used to compute
+          // it, on the update object. If the reducer hasn't changed by the
+          // time we enter the render phase, then the eager state can be used
+          // without calling the reducer again.
+          _update2.eagerReducer = _lastRenderedReducer;
+          _update2.eagerState = _eagerState;
+          if (is(_eagerState, currentState)) {
+            console.log("直接退出");
+            // Fast path. We can bail out without scheduling React to re-render.
+            // It's still possible that we'll need to rebase this update later,
+            // if the component re-renders for a different reason and by that
+            // time the reducer has changed.
+            return;
+          }
+        } catch (error) {
+          // Suppress the error. It will throw again in the render phase.
+        } finally {
+          {
+            ReactCurrentDispatcher$1.current = prevDispatcher;
+          }
+        }
+      }
+    }
+    {
+      if (shouldWarnForUnbatchedSetState === true) {
+        warnIfNotCurrentlyBatchingInDev(fiber);
+      }
+    }
+    scheduleWork(fiber, _expirationTime);
+  }
+}
+```
+
+`_lastRenderedReducer` 就是 `basicStateReducer`
+
+```jsx
+function basicStateReducer(state, action) {
+  return typeof action === "function" ? action(state) : action;
+}
+```
+
+第三第四次会在这个判断语句里退出。
+
+```jsx
+if (is(_eagerState, currentState)) {
+  // Fast path. We can bail out without scheduling React to re-render.
+  // It's still possible that we'll need to rebase this update later,
+  // if the component re-renders for a different reason and by that
+  // time the reducer has changed.
+  return;
+}
+```
+
+那么第二次为什么不在这里退出呢 ？ 在第二次这里的语句是 `false`
+
+```jsx
+if (fiber.expirationTime === NoWork && (alternate === null || alternate.expirationTime === NoWork))
+```
+
+追溯下内部的调用， 在第二次的时候 `fiber.expirationTime !== NoWork`, 所以这个判断语句就不会走, 那么第三次为什么又相等了呢？再一次看下 `bailoutHooks` 函数
+
+```jsx
+function bailoutHooks(current, workInProgress, expirationTime) {
+  workInProgress.updateQueue = current.updateQueue;
+  workInProgress.effectTag &= ~(Passive | Update);
+  if (current.expirationTime <= expirationTime) {
+    current.expirationTime = NoWork;
+  }
+}
+```
+
+`current.expirationTime = NoWork;` 进行了赋值。所以这就是整个过程了。
+
+## 总结
+
+`class` 和 `hooks` 中基本保持一致, 但是 `hooks` 中会做一层 `Object.is` 的判断，
+所以在进行状态更新的时候， 需要注意下这点。还有在异步调用中， `hooks` 也无法拿到最新的值， 因为在一个函数中， 每次 `render` 都是新的函数， 所以输出的都是之前的值， 这个点要注意一下。这个可以参考 `Dan` 的博客 [A Complete Guide to useEffect](https://overreacted.io/a-complete-guide-to-useeffect/)
+
+[查看代码](https://codesandbox.io/s/hooks-vs-class-5buww)
