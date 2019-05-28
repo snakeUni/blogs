@@ -1,30 +1,32 @@
-import { Route } from 'navi'
-import React from 'react'
-import { NavLink } from 'react-navi'
-import siteMetadata from '../siteMetadata'
-import ArticleSummary from './ArticleSummary'
-import Bio from './Bio'
-import Pagination from './Pagination'
-import styles from './BlogIndexPage.module.css'
+import { Route } from "navi";
+import React from "react";
+import { NavLink } from "react-navi";
+import siteMetadata from "../siteMetadata";
+import ArticleSummary from "./ArticleSummary";
+import Bio from "./Bio";
+import Toggle from "./toggle";
+import Pagination from "./Pagination";
+import styles from "./BlogIndexPage.module.css";
 
 interface BlogIndexPageProps {
-  blogPathname: string
-  pageCount: number
-  pageNumber: number
-  postRoutes: Route[]
+  blogPathname: string;
+  pageCount: number;
+  pageNumber: number;
+  postRoutes: Route[];
 }
 
 function BlogIndexPage({
   blogPathname,
   pageCount,
   pageNumber,
-  postRoutes,
+  postRoutes
 }: BlogIndexPageProps) {
   return (
     <div>
       <header>
         <h1 className={styles.title}>
           <NavLink href={blogPathname}>{siteMetadata.title}</NavLink>
+          <Toggle />
         </h1>
         <Bio />
       </header>
@@ -44,18 +46,16 @@ function BlogIndexPage({
       )}
       <footer className={styles.footer}>
         <div>
-          <a href="./rss.xml" target="_blank" style={{ float: 'right' }}>
+          <a href="./rss.xml" target="_blank" style={{ float: "right" }}>
             RSS
           </a>
-          <NavLink href="./about">About</NavLink> &bull;{' '}
-          <NavLink href="./tags">Tags</NavLink> &bull;{' '}
-          <a href="https://github.com/snakeUni/uni-blog">
-            Source
-          </a>
+          <NavLink href="./about">About</NavLink> &bull;{" "}
+          <NavLink href="./tags">Tags</NavLink> &bull;{" "}
+          <a href="https://github.com/snakeUni/uni-blog">Source</a>
         </div>
       </footer>
     </div>
-  )
+  );
 }
 
-export default BlogIndexPage
+export default BlogIndexPage;
