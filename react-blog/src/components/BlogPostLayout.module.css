@@ -4,31 +4,36 @@
   line-height: 1.1;
   text-rendering: optimizeLegibility;
 }
-.title > a {
+
+.title>a {
   text-decoration: none;
 }
 
 .header {
-  margin-bottom: 2.4rem;  
+  margin-bottom: 2.4rem;
 }
+
 .header .title {
   font-size: 2.5rem;
   margin-top: 1.7rem;
   margin-bottom: 0;
 }
-.header .title > a {
+
+.header .title>a {
   color: black;
 }
 
 .footer {
   margin-top: 7rem;
 }
+
 .footer .title {
   font-size: 1.44rem;
   margin-top: 0;
   margin-bottom: 2.4rem;
 }
-.footer .title > a {
+
+.footer .title>a {
   color: var(--primary-color-light);
 }
 
@@ -40,6 +45,7 @@
   display: flex;
   justify-content: space-between;
 }
+
 .links .next {
   flex-grow: 1;
   flex-shrink: 1;
@@ -47,7 +53,7 @@
 }
 
 .content hr {
-  background: hsla(0,0%,0%,0.2);
+  background: hsla(0, 0%, 0%, 0.2);
   border: none;
   height: 1px;
 }
@@ -62,14 +68,14 @@
   margin-top: 3.5rem;
   text-rendering: optimizeLegibility;
 }
-  
+
 /**
 * Based on copypasta from Remy Bach and Sarah Drasner
 */
 .content code,
 .content pre {
   color: white;
-  font-family: Consolas,Menlo,Monaco,source-code-pro,Courier New,monospace;
+  font-family: Consolas, Menlo, Monaco, source-code-pro, Courier New, monospace;
   font-feature-settings: normal;
   text-align: left;
   white-space: pre;
@@ -80,23 +86,23 @@
   tab-size: 4;
   hyphens: none;
 }
-  
+
 /* Code blocks */
 .content pre {
   overflow: auto;
   padding: 1em;
 }
 
-.content :not(pre) > code,
+.content :not(pre)>code,
 .content pre {
-  background: hsla(0,0%,0%,0.9);
+  background: hsla(0, 0%, 0%, 0.9);
 }
-  
+
 .content pre::-moz-selection,
 .content pre::selection {
   background: hsl(207, 4%, 16%);
 }
-  
+
 /* Text Selection colour */
 .content pre::-moz-selection,
 .content pre ::-moz-selection {
@@ -111,14 +117,15 @@
 }
 
 /* Inline code */
-.content :not(pre) > code {
+.content :not(pre)>code {
   border-radius: .3em;
-  background: rgba(255,229,100,0.2);
+  background: rgba(255, 229, 100, 0.2);
   color: #1a1a1a;
   padding: .15em .2em .05em;
   white-space: normal;
 }
-.content a > code {
+
+.content a>code {
   color: var(--primary-color);
 }
 
@@ -191,4 +198,9 @@
 
 .content :global(.token.namespace) {
   color: rgb(178, 204, 214);
+}
+
+img {
+  width: 100%;
+  height: 100%;
 }

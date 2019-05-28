@@ -1,9 +1,9 @@
-import React from 'react'
-import styles from './Bio.module.css'
-import bioPic from './bio-pic.jpg'
+import React from "react";
+import styles from "./Bio.module.css";
+import bioPic from "./bio-pic.jpeg";
 
 interface BioProps {
-  className?: string
+  className?: string;
 }
 
 function Bio(props: BioProps) {
@@ -11,17 +11,16 @@ function Bio(props: BioProps) {
     <div
       className={`
       ${styles.Bio}
-      ${props.className || ''}
-    `}>
+      ${props.className || ""}
+    `}
+    >
       <img src={bioPic} alt="lanyincao" />
       <p>
-        Personal blog by{' '}
-        <a href="https://twitter.com/JingGe14/">lanyincao</a>.
-        <br />
-        I explain with words and code.
+        Personal blog by <a href="https://twitter.com/lanyincao">lanyincao</a>.
+        <br />I can't sing, dance, rap but can code, 🏀
       </p>
     </div>
-  )
+  );
 }
 
-export default Bio
+export default Bio;

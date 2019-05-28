@@ -4,6 +4,10 @@
   font-weight: 900;
   line-height: 1.1;
   margin-top: 1.7rem;
-  margin-bottom: 2.4rem;  
+  margin-bottom: 2.4rem;
   text-rendering: optimizeLegibility;
+}
+
+img {
+  width: 100%;
 }
