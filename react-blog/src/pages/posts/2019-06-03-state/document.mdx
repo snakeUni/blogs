@@ -91,7 +91,7 @@ export default function Demo() {
 
 在代码里点击按钮，然后设置 `name` 和 `hobby`, 可能有人会问这不是两个属性值一起设置嘛，为什么不`setState({ ...state, name: '牧云云', hobby: 'coding' })`, 因为当时 `setFieldValue` 的用法是 `setFieldValue(key, value)`, 所以就调用了多次。此时点击 `set name and hobby sync` 按钮，会输出什么呢？
 
-![cc37e062.png](http://chuantu.xyz/t6/702/1559521442x2073530527.png)
+![cc37e062](https://user-images.githubusercontent.com/17973020/59817731-a3221800-9353-11e9-8a15-88bdbc67bcdd.png)
 
 可以看到在事件中输出的都是上一次的 `state`, 然后 `render` 了一次，为什么 `render` 了一次可以看我[上篇文章](https://uni-blog.netlify.com/posts/2019-05-28/hooks-vs-class/) 中的链接，这里我们先跳过这里，看 `render 部分`的输出
 
@@ -125,7 +125,7 @@ const handleClick1 = () => {
 };
 ```
 
-![55a12b25.png](http://chuantu.xyz/t6/702/1559521907x2073530529.png)
+![55a12b25](https://user-images.githubusercontent.com/17973020/59817757-b8974200-9353-11e9-9dda-b211de81e24d.png)
 
 可以看到 `render` 了两次，生命周期函数也走了两次，这个不是我们今天关心的重点，今天关心的重点在 `state` 的更新上, 第一次更新的时候 `name` 发生了变更，但是在第二次的时候，拿到的 `state` 仍然是之前的 `name: 牧老师`， 所以第一次设置的 `name: 牧云云` 被覆盖了，页面上基本看不出来 `name` 变化的过程, 那我们把第二个 `setState` 放到 `setTimeout` 中呢， 此时页面的变化过程是很容易看出来的
 
@@ -167,7 +167,7 @@ const handleClick2 = () => {
 
 那么输出的又是什么呢？
 
-![42e8111c.png](http://chuantu.xyz/t6/702/1559521947x2073530529.png)
+![42e8111c](https://user-images.githubusercontent.com/17973020/59817787-d5337a00-9353-11e9-88e1-e2306f65b8cf.png)
 
 和我们预期的是一致的，`name` 和 `hobby` 都发生了更新, 这是为什么呢？单独看代码可以知道在执行函数的时候都会把上一次的 `state` 作为参数传递给下个函数使用，所以在调用的时候，每次 `preState` 都是上一次最新的 `state` 所以能拿到最新的。那么在异步中表现又是什么样的呢？
 执行异步的代码
@@ -189,7 +189,7 @@ const handleClick3 = () => {
 };
 ```
 
-![1bf0c6c2.png](http://chuantu.xyz/t6/702/1559521976x2073530529.png)
+![1bf0c6c2](https://user-images.githubusercontent.com/17973020/59817797-e2506900-9353-11e9-8aac-c71f58ceb4e6.png)
 
 表现的是一致的。在 class 中表现的是什么样的呢 ?
 
@@ -227,7 +227,7 @@ export default class Demo1 extends React.Component {
 
 点击按钮看一下输出结果
 
-![c6f6e146.png](http://chuantu.xyz/t6/702/1559522016x1709417317.png)
+![c6f6e146](https://user-images.githubusercontent.com/17973020/59817816-f5fbcf80-9353-11e9-8d37-9aa3820dacbb.png)
 
 `class` 中表现的是正常的，因为在 class 中， state 是挂在 `this` 上始终这个 state 都是相同的一个引用，所以在第一次 `setState` 后，此时的 `name` 修改为了 `牧云云`， 再一次调用 `setState` 的时候，内部拿到的 `this.state` 已经是最新的 `name` 了，所以在设置 `hobby` 的时候已经是最新的了。
 
@@ -329,11 +329,11 @@ function updateReducer(reducer, initialArg, init) {
 }
 ```
 
-![3151559491185_.pic_hd.jpg](http://chuantu.xyz/t6/702/1559522048x2073530529.jpg)
+![ddda387a](https://user-images.githubusercontent.com/17973020/59817874-23e11400-9354-11e9-8f56-bf6995fc93e3.jpg)
 
 关注这块代码
 
-![3161559491511_.pic.jpg](http://chuantu.xyz/t6/702/1559522077x1709417317.jpg)
+![8764128b](https://user-images.githubusercontent.com/17973020/59817900-38bda780-9354-11e9-8769-0d2e3d62336d.jpg)
 
 ```jsx
 if (_update.eagerReducer === reducer) {
