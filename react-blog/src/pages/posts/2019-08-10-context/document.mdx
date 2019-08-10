@@ -1,0 +1,236 @@
+# Context
+
+[context](https://reactjs.org/docs/context.html#when-to-use-context) 在 react 中是一个神奇的东西，`context` 的出现是为了解决在 react 中传递 props 需要多层传递的问题，
+在使用了 context 之后可以有效的解决这个问题。从 15 版本到 16 版本, `context` 的 api 也发生了不少的变化。先看下在 class 中如何使用 context
+
+## Class Context
+
+首先需要先声明一个 context, 如何声明？
+
+```js
+import React from 'react';
+
+const context = React.createContext();
+```
+
+通过调用 `React.createContext` 来创建一个 context 的声明, 如何使用呢？比如此时有父组件叫做 app
+
+app.js
+
+```js
+import React from 'react';
+import context from './context';
+
+export default class App extends React.Component {
+  state = {
+    value: { name: 'lanyincao', age: 20 }
+  };
+
+  updateState = () => {
+    this.setState({ age: this.state.age + 1 });
+  };
+  render() {
+    return (
+      <div>
+        <context.Provider
+          value={{ ...this.state.value, updateState: this.updateState }}
+        >
+          {this.props.children}
+        </context.Provider>
+      </div>
+    );
+  }
+}
+```
+
+可以通过调用 `context.Provider` 来作为父组件的那一层，此时需要接受一个 `value` 的 props, 每次 value 发生变化，都会触发 `context` 的重新渲染。
+
+既然 `context` 的目的是为了解决 props 传递的问题，那么在子组件中是如何拿到在 app.js 中的数据呢, 假设此时有子组件叫 `ExampleA.js`
+
+ExampleA.js
+
+```js
+import React from 'react';
+import context from './context';
+
+export default class ExampleA extends React.Component {
+  render() {
+    return (
+      <div>
+        <context.Consumer>{value => <div>xxxx</div>}</context.Consumer>
+      </div>
+    );
+  }
+}
+```
+
+在子组件中需要使用 `context.Consumer`, 这是一个 [render props](https://reactjs.org/docs/render-props.html#use-render-props-for-cross-cutting-concerns) 组件, 接收一个参数叫做
+`value`, 此时的 `value` 就是 `context.Provider` 传递下来的 `value`, 所以就可以在内部使用拿到的 `value`。
+
+## Tips
+
+在使用 `context` 的时候需要注意一些点，首先 `context` 是无法被 `bailout` 意思就是无论你是使用 `PureComponent` 还是 `memo` 都是无法阻止 `context` 的更新的。并且如果 context 所在的组件没有更新，但是 context 发生了更新，
+那么此时只会渲染 `context` 的部分, 比如下面这段代码
+
+```js
+import React from 'react';
+import context from './context';
+
+export default class ExampleB extends React.Component {
+  render() {
+    return (
+      <div>
+        {console.log(111)}
+        <context.Consumer>
+          {value => (
+            <div>
+              <div>
+                name: {value.name}, age: {value.age}
+              </div>
+              <button onClick={value.updateState}>updateAge</button>
+            </div>
+          )}
+        </context.Consumer>
+      </div>
+    );
+  }
+}
+```
+
+此时点击 `updateAge` 会调用顶层的 `updateAge`, 那么 `app` 组件被更新，所以 `Provider` 的 `value` 发生了变化，所以 `context` 将会更新。但是 `ExampleB` 组件中的 `console.log(111)` 并
+没有被打印出来，里面的 `age` 却发生了变化，这也是 `react` 本身做的优化之一吧，发生做不必要的渲染。那么在看下 `ExampleC` 组件
+
+```js
+import React from 'react';
+import context from './context';
+
+export default class ExampleC extends React.PureComponent {
+  render() {
+    return (
+      <div>
+        {console.log(111)}
+        <context.Consumer>
+          {value => (
+            <div>
+              <div>
+                name: {value.name}, age: {value.age}
+              </div>
+              <button onClick={value.updateState}>updateAge</button>
+            </div>
+          )}
+        </context.Consumer>
+      </div>
+    );
+  }
+}
+```
+
+此时 `ExampleC` 组件是 `PureComponent`, `PureComponent` 对组件做了部分优化，当 `props` 没有发生变化的时候是不会 `render` 的，此时 `ExampleC` 组件没有多余的 props, 点击 `updateAge`, 会发现 `ExampleC` 中的
+`age` 也发生了变化，但是 `console.log(111)` 仍然也没有输出，所以无论是 `PureComponent` 还是 `memo`， `shouldComponentUpdate` 都是无法阻止 `context` 的更新的。
+
+## Hook Context
+
+`React` 团队在去年 10 月份的 `conf` 上讲到了 `Hook`, 可以在函数中使用状态，那么 `Hook` 解决了什么问题呢？在 `class` 中很多时候需要使用 `Hoc`, `render props`, 这些高阶的方法来封装一些方法，在 `js` 中，
+都知道`回调地狱`， 那么在 `react` 中就存在了一种叫做 `嵌套地狱` 的形式，比如
+
+```js
+<Hoc>
+  <div>
+    <Hoc>
+      <div>
+        <Hoc>
+          <div>
+            <Hoc>
+              <div>
+                <Hoc>
+                  <div />
+                </Hoc>
+              </div>
+            </Hoc>
+          </div>
+        </Hoc>
+      </div>
+    </Hoc>
+  </div>
+  <Hoc>
+    <div />
+  </Hoc>
+</Hoc>
+```
+
+这种有可能会嵌套的非常非常的神，对于调试来说也不是很方便。这也是 `Hook` 出来的原因之一。具体 [Hook 用法](https://reactjs.org/docs/hooks-intro.html) 可以去参照官网即可。
+
+今天在这里主要来介绍在 `Hook` 中如何使用 `context`， 在 `Hook` 有一个 `hook` 叫做 [useContext](https://reactjs.org/docs/hooks-reference.html#usecontext)
+
+`需要注意的是所有的`Hook`只能用于函数式组件中，如果在 class 中还需要用 class 的用法`
+
+不放把上面的 `ExampleB` 组件进行改造成函数组件
+
+```js
+import React from 'react';
+import context from './context';
+
+export default function ExampleB() {
+  const value = useContext(context);
+  return (
+    <div>
+      <div>
+        name: {value.name}, age: {value.age}
+      </div>
+      <button onClick={value.updateState}>updateAge</button>
+    </div>
+  );
+}
+```
+
+在函数里使用了 `useContext`, 注意所有的 `Hook` 都必要在函数组件中的顶层使用！！！
+`useContext` 接收的参数是 `context`, 这个地方要注意一下
+
+```js
+Correct: useContext(context);
+Incorrect: useContext(context.Provider);
+Incorrect: useContext(context.Consumer);
+```
+
+`useContext` 的返回值就是 `context.Provider` 的 `value` 的值，当 `value` 发生变化的时候，使用 `context` 的地方就会发生更新。比如此时点击
+`updateAge`， 那么 `ExampleB` 就会发生更新，`age` 就会发生变化。
+
+在 `Hook` 中使用 `useContext` 极为简单，但是一定要记得在`顶层使用`。`context` 通常会与 `useReducer` 一起使用, 比如创建一个简单的表单，就可以这么处理。至于如何创建
+高效的 `Form`, 这里就不做详细的阐述。
+
+## context is necessary?
+
+`context` 一般能解决大部分的场景，但是是否所有的场景都适合 `context` 呢？现在市场上有很多的状态管理的库比如 `redux`, `mobx`, `rematch`, `reselect`, `dva` 等一些库来处理
+状态的问题。这些库可能处理的不仅仅是状态的问题，还有一些异步操作，一些副作用的处理等。以 `react-redux` 为例
+
+在 `react-redux` 中也使用了 context, 但是内部代码确采用了 `subscriber` 的方式，为什么？在 `class` 中说过只要使用 `context` 的地方,都会造成更新，那么比如在 A 组件中只需要 `age` 字段
+在 `B` 组件中只需要 `name` 字段，所希望的是在修改 `age` 的时候， `B` 组件是不应该发生 `render` 的，所以 `react-redux` 内部采用了这种方式来处理 `context` 引起的性能问题。通常在日常的业务代码中
+不用太关心这个问题，因为在使用 `context` 的时候通常涉及的组件数量不会很多，即使多 `render` 了几次也不会造成太大的影响。
+
+如果你正在使用 `context`，又遇到了同样的性能问题，可能你并不想用 `react-redux`，那么我推荐使用 [react-redux-chaos](https://github.com/snakeUni/react-redux-chaos) 这个库，这个库的写法很简单，也
+做到了部分渲染，修改 A 组件并不会影响到 B 组件。只需要在组件中使用 `useSelector` 即可
+
+```js
+import React from 'react';
+import { useSelector } from 'react-redux-chaos';
+
+export default function ExampleA() {
+  const { getState, dispatch } = useSelector();
+  const state = getState();
+  return (
+    <div>
+      age: {state.age}
+      <button onClick={() => dispatch({ type: 'updateAge' })}>updateAge</button>
+    </div>
+  );
+}
+```
+
+具体用法可以参考官网。
+
+## Conslusion
+
+`context` 解决了状态多层传递的问题，但是也有可能会引起一些性能文艺。一般情况下不需要太多关注这个性能问题，除非真正的遇到这个问题。在函数中可以使用 `useContext` 新的 `Hook` 来达到和 class 中
+同样的效果。
+
+## Thanks
