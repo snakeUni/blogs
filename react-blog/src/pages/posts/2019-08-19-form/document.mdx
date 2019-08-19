@@ -1,0 +1,491 @@
+表单组件是在 `B端` 开发中最常用的一个组件，比如 `Input`, `Textarea`, `DatePicker` 等等，这些都是常用的表单类组件，然而表单的管理确是比较复杂的部分。常规在开发表单的时候，很多时候可能不使用 `Form` 这样的组件而是这样
+
+```js
+const Form = () => {
+  const [person, setPerson] = useState({
+    name: '',
+    age: '',
+    address: ''
+  })
+
+  const submit = () => {
+    if (validate(person)) {
+      ...
+    }
+  }
+
+  return (
+    <div>
+      <label>姓名:</label>
+      <Input value={person.name} onChange={value => {
+        setPerson({ ...person, name: value })
+      }}/>
+      <label>年龄:</label>
+      <Input value={person.age} onChange={value => {
+        setPerson({ ...person, age: value })
+      }}/>
+      <label>地址:</label>
+      <Input value={person.address} onChange={value => {
+        setPerson({ ...person, address: value })
+      }}/>
+      <Button onClick={handleSubmit}>提交</Button>
+    </div>
+  )
+}
+```
+
+如果不使用基础的 `form` 标签，基础表单基本上都是这么写的，声明表单中所需要的状态，对应的 `value` 与各自的组件对应起来，如果存在校验信息的是，还需要进行校验。因为表单很多时候是需要进行实时校验的，及时让用户发现问题，然后能及时改正问题。那这样每一个 `Input` 这样的组件都应该需要 `validate` 这样的一个校验函数，还有是否在 `onChange` 时候校验还是在 `onBlur` 的时候校验，这些都是需要考虑的问题。如果我们的状态不是特别多的情况下，这样写是没有什么问题的？但是即使是这样简单的表单，如果此时是 `A` 页面需要这样的表单， `B` 页面也同样需要这样的表单，`validate` 等都需要。那么要不去拷贝代码过来修改一下，要不自己封装一个 `Form` 来解决这个问题。
+
+## 封装 Form 😲
+
+考虑一下上面的代码如何封装成一个 `Form` 呢？就像上面的代码一样，组件的名称已经命名为 `Form` 了, 是否这样就可以了呢？如果存在这样的结构呢？
+
+```js
+<Form>
+  <A>
+    <B>
+      <C />
+    </B>
+  </A>
+  <A'>
+    <B'>
+      <C' />
+    </B'>
+  </A'>
+</Form>
+```
+
+此时 `C` 组件内部才用了 `Input` 这样的组件，那如果在 `C'` 组件中用到了 `C` 组件的信息怎么办呢？
+遇到这种场景通常的做法叫做 `lifting state up`, 状态提升，在更新 `C` 组件的时候，把状态同步更新到 `Form` 组件， `Form` 组件又把这个数据传递到 `C'` 组件， `C'` 组件拿到了正确的数据。`Nice`, 通过状态提升，成功的解决了这样的问题。但是这样每次就需要在 `Form` 中存储状态，然后还需要传递回调函数到需要的组件中，更新相应的状态。如果组件嵌套只有 `2 - 3` 层的时候，这样是完全没有问题的。但是如果组件嵌套有很多层呢？比如此时 `E 组件` 才是 `Input` 组件的所在，那么这样嵌套下去传递
+
+```js
+<Form>
+  <A>
+    <B>
+      <C>
+        <D>
+          <E />
+        </D>
+      </C>
+    </B>
+  </A>
+</Form>
+```
+
+的层数只会越来越多，后面维护起来要每一层每一层去看，防止其中一层出现问题了。针对这样的问题，如何解决呢？很多童鞋会想到 `react-redux`, `mbox` 通过状态管理工具来解决这样的传递的问题，恭喜思路是完全正确的，通过目前的一些状态管理库是可以做到的。不妨以 `react-redux` 举例， `react-redux` 内部使用了 `React Context`, 是的， `React` 团队为了解决这种问题，提供了 `context` 这样的 `api`, 那么 `context` 如何使用呢？
+
+```js
+import React, { createContext, useState } from 'react';
+
+const FormContext = createContext();
+
+const Form = ({ children }) => {
+  const [value, setValue] = useState({});
+  return (
+    <FormContext.Provider value={{ value, dispatch: setValue }}>
+      {children}
+    </FormContext.Provider>
+  );
+};
+```
+
+首先需要使用 `React.createContext` 来创建一个 `context`, 然后在组件中使用 `context.Provider`, `context.Provider` 接受一个 `value` props， 如何获取到 `value` 中的值
+
+```js
+import React, { useContext } from 'react';
+import { FormContext } from './context';
+
+const Field = () => {
+  const { value, dispatch } = useContext(FormContext);
+};
+```
+
+通过在`子组件`中使用 `useContext()` 获取到相应的 value, 如果在 `class 组件`中则
+
+```js
+import React, { useContext } from 'react';
+import { FormContext } from './context';
+
+class Field extends React.Component {
+  render() {
+    return (
+      <FormContext.Consumer>
+        {({ value, dispatch }) => {
+          return null;
+        }}
+      </FormContext.Consumer>
+    );
+  }
+}
+```
+
+使用 `FormContext.Consumer` 的方式，这是一个 `render props` 的组件。因为一个普通的 `Form` 就可以简洁的完成了, 首先在 `Form` 组件中利用 `context.Provider` 把想要的值和方法传递下去，在 `Field` 组件中拿到 `value` 和 `dispatch`, 这样就解决了多层传递状态的问题。这样简约的表单用起来很爽，但是随着业务的慢慢复杂，需要的功能也会越来越多，表单中的组件也会越来越多，比如
+
+```js
+<Form>
+  <Field />
+  <Field />
+  <Field />
+  <Field />
+  <Field />
+  <Field />
+  <Field />
+  ...
+</Form>
+```
+
+有可能这样的 `Field` 组件可能有几十个甚至上百个，然后发现表单变得越来越慢越来越慢，这是为什么呢？因为在 `Field` 组件中每次执行 `dispatch` 都会修改顶层的 value, 顶层的 `value` 发生变化了，这样每一个 `Field` 组件都会被渲染，只要是使用了 `useContext()` 这样的组件都会被渲染，这个渲染的量可能非常非常的大，及时一个简单的 `Input` 修改了其中的一个值，也会造成整个 `Form` 重新 render, 一两次 render 可能耗时非常少，但是当达到上百个的时候，此时的 `render` 耗时就会非常非常的高。可能这第一个 `Field` 中只修改了 `a` 属性，可是其他的 `Field` 中都没有用到 `a` 属性，其余的子组件的渲染是多余的。但是 `context` 是无法被 `bail out` 的, 所以所有的 `Field` 都会渲染，那么不妨控制下 `Field` 的子组件
+
+```js
+import React, { useContext, useMemo } from 'react';
+import { context } from './context';
+
+const Field = ({ name, validate, validateOnChange }) => {
+  const { value, dispatch } = useContext(context);
+
+  const children = useMemo(() => {
+    return <Sub name={name} validate={validate} validateOnChange />;
+  }, [name, validate, validateOnchange, value]);
+};
+```
+
+此时 `Field` 组件通过使用 `useMemo` 进行缓存，只有当数组的值发生变化的时候，才会再一次重新 `render`, `useMemo` 的作用和 `react-redux` 的 `connect` 高阶函数的作用是一样的，通过使用 `useMemo` 可以把 `render 时间长的子组件` 进行缓存，减少 `render` 时间，提升性能。
+
+## optimize form 😊
+
+此时是否已经完成了整个 `Form` 的优化过程了，此时的 `Form`, 包括常规使用的 `context` 通过 `memo` 进行优化实际上已经提高了很多。但是即使是单纯的一个 `Field` 组件，如果数量很多的情况下仍然还是会存在卡顿的情况的。特别是当接入了第三方组件库的时候。本身第三方组件提供的功能有很多，组件本身也会很复杂，不像原生的 `input` 那样简单，假设此时接入的是 `antd` 的组件库
+
+```js
+import { Input } from 'antd';
+
+const CustomInput = () => {
+  return (
+    <Field>
+      <Input />
+    </Field>
+  );
+};
+```
+
+在对 `Input` 进行快速输入的时候，可以看到页面的响应会有所延迟，如果打开 `chrome` 的 `performance` 进行录制的时候，就会看到一个长任务，关于 `长任务` 这里不做详细描述，这种可以通过时间分片（time slicing） 来解决这样的问题。但是我们集中在 `Field` 渲染这块，`Input` 的改动是非常频繁的，那么顶层的 `context` 修改的也非常频繁，即使使用了 `useMemo` 仍然还有卡顿的现象。`React 成员 Dan` 在 twitter 中说过 `context` 并不适合修改特别频繁的组件，比如 `Input`, 但是在 `Form` 中的确需要 `context` 来处理这样的问题。那么是否可以解决这样的问题？如何来优化 `Form`?
+
+目前所有的数据都是存在了 `Form` 的顶层，在顶层更新触发子组件的更新，那么针对 `Field` 这么频繁的渲染，能否做到每次修改当前 `Field` 的时候，只会渲染当前的 `Field` 呢？
+
+`Form.js`
+
+```js
+import React from 'react';
+import { formContext, formApiContext, formStateContext } from './context';
+import useForm from './useForm';
+
+const Form = ({ children }) => {
+  // 调用 useForm
+  const [formState, formApi] = useForm();
+  // 注册器，用于调用局部更新函数
+  const fieldRegister = useRegister();
+
+  return (
+    <formContext.Provider value={fieldRegister}>
+      <formStateContext.Provider value={formState}>
+        <formApiContext.Provider value={formApi}>
+          {children}
+        </formApiContext.Provider>
+      </formStateContext.Provider>
+    </formContext.Provider>
+  );
+};
+```
+
+在 `Form.js` 中首先有三个 `context` 分别是 `formContext`, `formStateContext`, `formApiContext`。为什么不使用一个 context 呢？因为通过三个 context, 把各自的职能进行区分。多个 context 也能起到优化的作用，比如
+
+```js
+const A = () => {
+  const api = useContext(formApiContext);
+};
+
+const B = () => {
+  const state = useContext(formStateContext);
+};
+```
+
+那么每次 `formStateContext` 的 value 更新的时候，`formApiContext` 的使用处皆不受影响，`A` 组件不会因为 `B` 组件使用的 `context` 的值的变化而进行更新。这也是为什么使用多个 `context`。
+
+`useForm.js`
+
+```js
+import { useState } from 'react';
+
+const useForm = () => {
+  const [state, setState] = useState({
+    values: {},
+    errors: {}
+  });
+
+  // 设置单个值
+  const setValue = (name, value) => {
+    const cloneValues = { ...state.values, name: value };
+    setState({ ...state, values: cloneValues });
+  };
+
+  // 设置单个错误信息
+  const setError = (name, error) => {
+    const cloneErrors = { ...state.errors, name: error };
+    setState({ ...state, errors: cloneErrors });
+  };
+
+  // 获取单个值
+  const getValue = name => {
+    return state.values[name];
+  };
+
+  // 获取单个错误
+  const getError = name => {
+    return state.errors[name];
+  };
+
+  return [state, { setValue, setError }];
+};
+```
+
+在 `useForm.js` 中声明了一个状态，也可以使用 `useReducer`, 这里主要为了阐述思想，使用 `useState`。有两个函数分别是 `setValue` 和 `setError`, `setValue:` 是用来更新修改的值， `setError:` 用来设置错误的信息。`useRegister` 这里先暂不讨论，先看一下常规的 `Field` 组件。
+
+`Field.js`
+
+```js
+import useFormApi from './useFormApi';
+
+// 假设所有的
+const Field = ({ name }) => {
+  const formApi = useFormApi();
+
+  const handleChange = value => {
+    formApi.setValue(name, value);
+  };
+
+  return children({
+    value: formApi.getValue(),
+    error: formApi.getError(),
+    handleChange
+  });
+};
+```
+
+一个简单的 `Field` 用于修改 `form` 的值，如何使用？
+
+```js
+<Field name='name'>
+  {({ value, handleChange }) => {
+    return <Input value={value} onChange={e => handleChange(e.target.value)} />;
+  }}
+</Field>
+```
+
+这就是 `Field` 的简单用法，但是此时，只要使用 `Field` 的组件在其中一个 `Field` 组件发生更新的时候，其他的所有的 `Field` 组件也会发生更新。因为在每次更新值的时候，调用 `setValue`, `useForm` 更新，返回新的值，`context` 的 value 发生变化，所有用到 `context` 地方都会发生更新。此时也许会想到每次返回的 `formApi` 都是一个新的对象好像是没有意义的，是的，这里是没有意义的，这也是之前为什么要使用多个 `context`, 因为每次都是新的引用这是完全没有意义的，那么是不是应该进行缓存呢？貌似这种想法是可以的，OK，做下去。
+
+`Form.js`
+
+```js
+const Form = ({ children }) => {
+  // 调用 useForm
+  const [formState, formApi] = useForm();
+  // 注册器，用于调用局部更新函数
+  const fieldRegister = useRegister();
+
+  // 缓存 api
+  const api = useState(formApi);
+
+  return (
+    <formContext.Provider value={fieldRegister}>
+      <formStateContext.Provider value={formState}>
+        <formApiContext.Provider value={api}>
+          {children}
+        </formApiContext.Provider>
+      </formStateContext.Provider>
+    </formContext.Provider>
+  );
+};
+```
+
+使用 `useState` 对 `formApi` 进行缓存，现在每次更新，`formApi` 都是之前的引用不在是新的引用，每次发生变化的是 `formState`, 此时修改 `Input` 的值发现一个问题，就是`Input` 输入不进去了？为什么呢？
+
+因为在 `Field` 组件是使用了 `useFormApi`
+
+`useFormApi.js`
+
+```js
+import { useContxt } from 'react';
+import { formApiContext } from './context';
+
+export function useFormApi() {
+  const formApi = useContext(formApiContext);
+  return formApi;
+}
+```
+
+但是因为在 `Form` 中对 `formApi` 进行了缓存，所以使用 `useFormApi` 的组件都不会重新 `render`, 所以 `Input` 中的值会输入不进去。那么是不是需要把在 `Field` 组件中在使用 `useFormState` 呢？
+
+```js
+import { useContxt } from 'react';
+import { formStateContext } from './context';
+
+export function useFormState() {
+  const formState = useContext(formStateContext);
+  return formState;
+}
+```
+
+如何使用 `useFormState` 的话， 那就没有意义了，因为每一个 `Field` 都会进行 `render`, 所以还需要继续使用 `useFormApi`, 现在考虑一下如何让单个 `Field` 渲染不影响其他的呢？
+
+在业务中，写组件的时候，两个组件如何做到互不影响，那就是组件管理自己的状态，比如:
+
+```js
+const A = () => {
+  const [name, setName] = useState('');
+  const [age, setAge] = useState(18);
+
+  return (
+    <div>
+      <div>name: {name}</div>
+      <div>age: {age}</div>
+      <div>
+        <button onClick={() => setName('lanyincao')}>setName</button>
+        <button onClick={() => setAge(20)}>setAge</button>
+      </div>
+    </div>
+  );
+};
+```
+
+此时 `A` 组件的状态只在自己的组件的内部，所以本身 `A` 组件的更新并不会影响到其他的组件的变化。那是否 `Field` 组件也可以这么做呢？
+
+`Field.js`
+
+```js
+import React, { useEffect, useState } from 'react';
+import useFormApi from './useFormApi';
+
+// 假设所有的
+const Field = ({ name }) => {
+  const formApi = useFormApi();
+  const register = useContext(formContext);
+
+  // 位置内部值的状态
+  const [value, setValue] = useState(formApi.getValue(name));
+
+  const handleChange = value => {
+    formApi.setValue(name, value);
+  };
+
+  useEffect(() => {
+    register.register(name, {
+      setValue
+    });
+  }, [name]);
+
+  return children({
+    value: formApi.getValue(),
+    error: formApi.getError(),
+    handleChange
+  });
+};
+```
+
+此时用过一个 register 把每一个 `Field` 的 setValue 注册进去，很多其他的高性能的 `Form` 都是采取 `Observer` 的形式的，包括 `react-redux` 如何解决性能问题的，都是通过 `Observer` 的形式。看下 `useRegister`
+
+```js
+import { useRef } from 'react';
+
+export function useRegister() {
+  const fields = useRef(new Map());
+
+  const register = (name, value) => {
+    fields.current.set(name, value);
+  };
+
+  const unregister = () => {
+    fields.current.delete(name);
+  };
+
+  return [fields, { register, unregister }];
+}
+```
+
+把 `Form` 中的 `useRegister` 移到 `useForm` 中, 修改 `useForm` 的返回值, 以及修改 `setValue`
+
+`useForm.js`
+
+```js
+import { useState } from 'react';
+import useRegister from './register';
+
+const useForm = () => {
+  const [state, setState] = useState({
+    values: {},
+    errors: {}
+  });
+
+  const [fields, fieldsApi] = useRegister();
+
+  // 设置单个值
+  const setValue = (name, value) => {
+    const cloneValues = { ...state.values, name: value };
+    // 获取到当前修改的 field
+    const currentField = fields.current.get(name);
+    setState({ ...state, values: cloneValues });
+    // 调用内部的 setValue
+    currentField.setValue(value);
+  };
+
+  // 设置单个错误信息
+  const setError = (name, error) => {
+    const cloneErrors = { ...state.errors, name: error };
+    setState({ ...state, errors: cloneErrors });
+  };
+
+  // 获取单个值
+  const getValue = name => {
+    return state.values[name];
+  };
+
+  // 获取单个错误
+  const getError = name => {
+    return state.errors[name];
+  };
+
+  return [state, { setValue, setError }, fieldsApi];
+};
+```
+
+`Form.js`
+
+```js
+import React from 'react';
+import { formContext, formApiContext, formStateContext } from './context';
+import useForm from './useForm';
+
+const Form = ({ children }) => {
+  // 调用 useForm
+  const [formState, formApi, fieldsApi] = useForm();
+
+  // 缓存 api
+  const api = useState(formApi);
+
+  return (
+    <formContext.Provider value={fieldsApi}>
+      <formStateContext.Provider value={formState}>
+        <formApiContext.Provider value={formApi}>
+          {children}
+        </formApiContext.Provider>
+      </formStateContext.Provider>
+    </formContext.Provider>
+  );
+};
+```
+
+现在修改其中一个 `Field` 的时候会调用内部的 `setValue` 方法，实现局部渲染。
+
+## conclusion
+
+- `context` 比较适合于改动不是很频繁的组件
+- 对于 render 时间较长的可以使用 `useMemo` 来优化
+- 变动频繁的可以采用已有的状态管理库比如 [react-redux-chaos](https://github.com/snakeUni/react-redux-chaos) 或者采取 `Observer` 的形式来处理
