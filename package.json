@@ -12,6 +12,7 @@
     "lodash": "^4.17.11",
     "navi": "^0.10.5",
     "navi-scripts": "^0.10.6",
+    "netlify-cli": "2.6.0",
     "prismjs": "^1.15.0",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
@@ -29,7 +30,8 @@
     "eject": "react-scripts eject",
     "serve": "navi-scripts serve",
     "clean": "rimraf build",
-    "deploy": "npm run clean && gh-pages -d build"
+    "deploy": "netlify deploy --dir=build",
+    "deploy:prod": "netlify deploy --dir=build --prod"
   },
   "eslintConfig": {
     "extends": "react-app"
