@@ -1,0 +1,290 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="shortcut icon" href="/fa.jpg"/><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"/><meta name="theme-color" content="#000000"/><link rel="manifest" href="/manifest.json"/>
+    <title>React Hooks vs Class</title>
+    <link rel="canonical" href="/posts/2019-05-28/hooks-vs-class" />
+    <link rel="stylesheet" href="/static/css/1.2800b7fc.chunk.css" />
+  <link href="/static/css/main.b2d7ecbb.chunk.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"><div class="BlogLayout_container__1wjbv"><div class="
+        LoadingIndicator_LoadingIndicator__LXZCC
+        
+        undefined
+      "></div><header><h3 class="BlogLayout_title__U0zfd"><a class=" " href="/">lanyincao</a></h3></header><main><article><header class="BlogPostLayout_header__6lPZ1"><h1 class="BlogPostLayout_title__1egAZ"><a class=" " href="/posts/2019-05-28/hooks-vs-class/">React Hooks vs Class</a></h1><small><time dateTime="Mon, 27 May 2019 16:00:00 GMT">May 28, 2019</time> <!-- -->•<!-- --> <ul class="ArticleMeta_tags__30Wbg"><li><a class=" " href="/tags/react/">react</a></li><li><a class=" " href="/tags/hook/">hook</a></li><li><a class=" " href="/tags/class/">class</a></li></ul> <!-- -->•<!-- --> <span>☕️<!-- --> <!-- -->7<!-- --> min read</span></small></header><div class="BlogPostLayout_content__1CRXP"><h1 id="hooks-vs-class">Hooks vs Class</h1><p>React 释放 <code>hooks</code> 已经半年了，从 hooks 刚刚释放的时候我就开始关注，并且就开始去尝试使用它。 从释放到现在 hooks 刚过不少， 内部源码至少改了两三次， 那为什么要写这篇文章呢 ？ 是因为一次偶然的事情引发的。 有一天<code>渊虹</code>老哥抱着电脑对我说， 你看我这个表单的提交时间就是在调用 <code>onSubmit</code> 的时候有点延迟啊， 这是为什么呀? 我试了一下果然是这样， 很奇怪了，为什么会这样呢 ? 于是我想到的第一个问题就是难道我把<code>同步当做异步处理</code>导致的？ 还是有可能的啊，于是我在群里问了这样的一个问题</p><img src="https://user-images.githubusercontent.com/17973020/58377052-f8fcdd80-7faa-11e9-9755-773651feb5a1.png" height="500"/><img src="https://user-images.githubusercontent.com/17973020/58377171-0ca94380-7fad-11e9-9030-cd2a7d5fe676.png" height="500"/><p>于是我就在第二天跑了一下，试试同步当做异步处理的话，会造成多少的延迟。当数量<code>小于100个</code>时候，简单的函数同步异步时间基本一致，1000 个的时候时间就有一些小的差距了， 10000 个的时候差距非常明显， <code>所以必要的时候，同步还是同步，不要当做异步来处理了</code>, 那一个 <code>form</code> 内部超过 100 个校验函数基本不可能，所以这个方面我就忽略了, 那会不会是另外一种可能呢？</p><h2 id="render-时间长且次数多导致的延迟">render 时间长且次数多导致的延迟</h2><p>再一次分析了<code>渊虹</code>老哥的代码，发现在提交表单的时候，<code>render</code> 了四次，于是我去查了下源码，发现这四次分别是，<code>校验设置错误</code> =&gt; <code>设置提交状态</code> =&gt; <code>设置表单是否有效</code> =&gt; <code>设置提交次数</code>, 然后在调用 <code>onSubmit</code>， 哎呀这个地方有有待修改的，比如可以改成这样 <code>设置提交状态</code> =&gt; <code>如果有效，调用 onSubmit 在设置有效状态和提交次数</code>。 否则在 <code>设置错误和状态</code>， 这样呢就能保证 <code>onSubmit</code> 的提交只有一次 <code>setState</code> 的操作，看下代码的截图</p><p>之前的提交</p><p><img src="https://user-images.githubusercontent.com/17973020/58377128-31e98200-7fac-11e9-8627-685ce89c7ccf.png" alt="d97dca23"/></p><p>修改后的提交</p><p><img src="https://user-images.githubusercontent.com/17973020/58377137-52194100-7fac-11e9-9503-dfc0e707c492.png" alt="fc8f38a3"/></p><p>这样在 <code>onSubmit</code> 之前就会调用的很快， 即使 <code>render</code> 很耗时</p><p>那肯定会有人提出来这样的问题， render 时间长这个是业务代码中的问题导致的， 那么 <code>render</code> 次数过多这是为什么呢？为什么这里会 <code>render</code> 这么多次呢 ？那从这里就引起今天这个话题了？ <code>class vs hooks</code></p><p>代码点击这里 =&gt; <a class=" " href="https://codesandbox.io/s/hooks-vs-class-5buww">hooks vs class - CodeSandbox</a></p><p>最简单的就是在事件中来测试区别。<code>hooks and class</code> 的 <code>increase</code> 事件都是同步的，我们在点击 <code>increasement</code> 的按钮的时候打开控制台看下输出是什么</p><p><img src="https://user-images.githubusercontent.com/17973020/58377138-65c4a780-7fac-11e9-9267-9b40f275e8c5.png" alt="45965b8f"/></p><p>可以看到 <code>console</code> 的顺序是先输出了事件调用中的 <code>console</code>， 在输出了 <code>render</code> 中的 <code>console</code>， 这个大家都是知道的， <code>setState</code> 是<a class=" " href="https://reactjs.org/docs/faq-state.html#when-is-setstate-asynchronous">异步的</a> , 修改下代码，在这个事件函数里多次 <code>setState</code> 会怎么样呢？结果输出还是一样呢？对于这样是为什么，可以看<a class=" " href="https://reactjs.org/docs/state-and-lifecycle.html#state-updates-may-be-asynchronous">官网</a>以及<a class=" " href="https://juejin.im/post/5b45c57c51882519790c7441">setState 解析</a>，
+在点击 <code>increaseBy</code> 按钮，这个和 <code>decrease</code> 是一样的， 所以我们只取一个来分析， 点击 <code>increaseBy</code> 按钮后看下控制台的输出</p><p><code>class</code> 中的 <code>increase</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token function-variable function">increaseBy</span> <span class="token operator">=</span> <span class="token parameter">number</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"fire increaseBy class"</span><span class="token punctuation">,</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre><p><code>hooks</code> 中的 <code>increase</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">const</span> <span class="token function-variable function">increaseBy</span> <span class="token operator">=</span> <span class="token parameter">number</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"fire increaseBy hook"</span><span class="token punctuation">,</span> count<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre><p>看下控制台的输出</p><p><img src="https://user-images.githubusercontent.com/17973020/58377148-7ecd5880-7fac-11e9-8686-523fb69f01d7.png" alt="e5a1163b"/></p><p><code>hooks</code> render 的次数是两次，然而在 class 中 render 了 四次，这是为什么呢？看起来很奇怪是不是。那我们不妨在 <code>hooks</code> 中在增加几个看看怎么样?</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">const</span> <span class="token function-variable function">increaseBy</span> <span class="token operator">=</span> <span class="token parameter">number</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"fire increaseBy hook"</span><span class="token punctuation">,</span> count<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre><p>在看下控制台的输出</p><p><img src="https://user-images.githubusercontent.com/17973020/58377153-8bea4780-7fac-11e9-8757-52307d8b6463.png" alt="2e4c8768"/></p><p>完全一样，那我们不妨修改下，在 <code>hooks</code> 中每次都设置不一样的值看看会发生什么</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">const</span> <span class="token function-variable function">increaseBy</span> <span class="token operator">=</span> <span class="token parameter">number</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span><span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"fire increaseBy hook"</span><span class="token punctuation">,</span> count<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre><p>输出如下</p><p><img src="https://user-images.githubusercontent.com/17973020/58377157-986ea000-7fac-11e9-88d3-ca0bbd31882c.png" alt="47307b50"/></p><p>这次是一致了对不对， 都是 <code>render</code> 了 4 次后才调用 <code>console</code> 的，至于在 class 中为什么表现是这样的看<a class=" " href="https://juejin.im/post/5b45c57c51882519790c7441">上面的文章</a></p><p>那在 <code>hooks</code> 中为什么会表现的如此不一致呢？ <a class=" " href="https://reactjs.org/docs/hooks-reference.html#bailing-out-of-a-state-update">官网</a>也贴了出来</p><p><img src="https://user-images.githubusercontent.com/17973020/58377158-a6bcbc00-7fac-11e9-9b78-54572ac17b52.png" alt="dccae51f"/></p><p>会用 <code>Objest.is</code> 会进行比较，如果认为是一样的，那么就会 <code>bailout</code>, 有的人可能会和我有一样的想法，当初我在看这个时候，我觉得在调用第二次 <code>render</code> 的时候就知道是一样的了，那应该不会在到 <code>commit</code> 阶段了吧。我们不妨来试试</p><p>在 <code>hooks</code> 加上这段代码</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token function">useEffect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"update hook"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre><p>在 class 中也加上这段代码</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token function">componentDidUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"update class"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>hooks</code> 中的 <code>increase</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">const</span> <span class="token function-variable function">increaseBy</span> <span class="token operator">=</span> <span class="token parameter">number</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"fire increaseBy hook"</span><span class="token punctuation">,</span> count<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre><p><code>class</code> 中的 <code>increase</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token function-variable function">increaseBy</span> <span class="token operator">=</span> <span class="token parameter">number</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count <span class="token operator">+</span> number <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">"fire increaseBy class"</span><span class="token punctuation">,</span> <span class="token keyword">this</span><span class="token punctuation">.</span>state<span class="token punctuation">.</span>count<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre><p>此时在点击 <code>increaseBy</code> 按钮看下输出如何？</p><p><img src="https://user-images.githubusercontent.com/17973020/58377167-da97e180-7fac-11e9-930d-74da2f014e1e.png" alt="77290f12"/></p><p>果真是这样的， 在 <code>hooks</code> 中第二次执行 <code>render</code> 并不会在去执行 <code>commit</code> 了，只在第一次 <code>render</code> 的时候执行了 <code>commit</code>， 然而 <code>class</code> 中却每次都执行了。</p><p>有的同学会问执行 <code>setCount</code> 的时候内部源码肯定都会去执行， 那为啥不是 <code>4</code> 次 <code>render</code>， <code>一次 commit</code> 呢 ？那我们来看下源码为什么会出现这种情况？</p><p>在 <code>调用 setCount</code> 的时候会调用源码中的 <code>dispatch</code>函数，在第一次调用的时候</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token function">setCount</span><span class="token punctuation">(</span>count <span class="token operator">+</span> number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre><p><code>count + number = 2</code> 结果是 <code>2</code> 不等于上一次的 <code>0</code>, 所以会走到 <code>updateReducer</code>,
+在 <code>updateReducer</code> 里面会进行比较</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token function">is</span><span class="token punctuation">(</span>_newState<span class="token punctuation">,</span> hook<span class="token punctuation">.</span>memoizedState<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token function">markWorkInProgressReceivedUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>如果不相同会如何， 会进行标记 <code>didReceiveUpdate</code>, 把 <code>didReceiveUpdate</code> 标记为 <code>true</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">markWorkInProgressReceivedUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  didReceiveUpdate <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>如果为 <code>true</code>，会进行更新。对于 <code>didReceiveUpdate</code> 的其他标记是在 <code>beginWork</code> 函数中.</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">beginWork</span><span class="token punctuation">(</span><span class="token parameter">current$<span class="token number">1</span><span class="token punctuation">,</span> workInProgress<span class="token punctuation">,</span> renderExpirationTime</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">var</span> updateExpirationTime <span class="token operator">=</span> workInProgress<span class="token punctuation">.</span>expirationTime<span class="token punctuation">;</span>
+
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>current$<span class="token number">1</span> <span class="token operator">!==</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">var</span> oldProps <span class="token operator">=</span> current$<span class="token number">1.</span>memoizedProps<span class="token punctuation">;</span>
+    <span class="token keyword">var</span> newProps <span class="token operator">=</span> workInProgress<span class="token punctuation">.</span>pendingProps<span class="token punctuation">;</span>
+
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>oldProps <span class="token operator">!==</span> newProps <span class="token operator">||</span> <span class="token function">hasContextChanged</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token comment">// If props or context changed, mark the fiber as having performed work.</span>
+      <span class="token comment">// This may be unset if the props are determined to be equal later (memo).</span>
+      didReceiveUpdate <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>updateExpirationTime <span class="token operator">&lt;</span> renderExpirationTime<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      didReceiveUpdate <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+</code></pre><p>这是第一次 <code>setCount</code>， 当第二次 setCount 的时候, <code>didReceiveUpdate</code> 为 <code>false</code>， 会走下面这段代码</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">if</span> <span class="token punctuation">(</span>current$<span class="token number">1</span> <span class="token operator">!==</span> <span class="token keyword">null</span> <span class="token operator">&amp;&amp;</span> <span class="token operator">!</span>didReceiveUpdate<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token function">bailoutHooks</span><span class="token punctuation">(</span>current$<span class="token number">1</span><span class="token punctuation">,</span> workInProgress<span class="token punctuation">,</span> renderExpirationTime<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">return</span> <span class="token function">bailoutOnAlreadyFinishedWork</span><span class="token punctuation">(</span>
+    current$<span class="token number">1</span><span class="token punctuation">,</span>
+    workInProgress<span class="token punctuation">,</span>
+    renderExpirationTime
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>这段代码在好几处都有， 其中一处就是在 <code>updateFunctionComponent</code> 这个函数中。那么 <code>bailoutHooks</code> 做了什么 ?</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">bailoutHooks</span><span class="token punctuation">(</span><span class="token parameter">current<span class="token punctuation">,</span> workInProgress<span class="token punctuation">,</span> expirationTime</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  workInProgress<span class="token punctuation">.</span>updateQueue <span class="token operator">=</span> current<span class="token punctuation">.</span>updateQueue<span class="token punctuation">;</span>
+  workInProgress<span class="token punctuation">.</span>effectTag <span class="token operator">&amp;=</span> <span class="token operator">~</span><span class="token punctuation">(</span>Passive <span class="token operator">|</span> Update<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>current<span class="token punctuation">.</span>expirationTime <span class="token operator">&lt;=</span> expirationTime<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    current<span class="token punctuation">.</span>expirationTime <span class="token operator">=</span> NoWork<span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>WIP</code> 的 <code>updateQueue</code> 更新为 <code>current</code> 的 <code>updateQueue</code></p><p><code>bailoutOnAlreadyFinishedWork</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">bailoutOnAlreadyFinishedWork</span><span class="token punctuation">(</span>
+  <span class="token parameter">current$<span class="token number">1</span><span class="token punctuation">,</span>
+  workInProgress<span class="token punctuation">,</span>
+  renderExpirationTime</span>
+<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token function">cancelWorkTimer</span><span class="token punctuation">(</span>workInProgress<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>current$<span class="token number">1</span> <span class="token operator">!==</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// Reuse previous context list</span>
+    workInProgress<span class="token punctuation">.</span>contextDependencies <span class="token operator">=</span> current$<span class="token number">1.</span>contextDependencies<span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>enableProfilerTimer<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// Don't update "base" render times for bailouts.</span>
+    <span class="token function">stopProfilerTimerIfRunning</span><span class="token punctuation">(</span>workInProgress<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">// Check if the children have any pending work.</span>
+  <span class="token keyword">var</span> childExpirationTime <span class="token operator">=</span> workInProgress<span class="token punctuation">.</span>childExpirationTime<span class="token punctuation">;</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>childExpirationTime <span class="token operator">&lt;</span> renderExpirationTime<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// The children don't have any work either. We can skip them.</span>
+    <span class="token comment">// TODO: Once we add back resuming, we should check if the children are</span>
+    <span class="token comment">// a work-in-progress set. If so, we need to transfer their effects.</span>
+    <span class="token keyword">return</span> <span class="token keyword">null</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token punctuation">{</span>
+    <span class="token comment">// This fiber doesn't have work, but its subtree does. Clone the child</span>
+    <span class="token comment">// fibers and continue.</span>
+    <span class="token function">cloneChildFibers</span><span class="token punctuation">(</span>current$<span class="token number">1</span><span class="token punctuation">,</span> workInProgress<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> workInProgress<span class="token punctuation">.</span>child<span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p>当执行到第三次 <code>setCount</code> 的时候， 会被直接 <code>return</code> 代码在 <code>dispatchAction</code> 中,
+因为在 <code>queue.dispatch</code> 绑定了 <code>dispatchAction</code></p><pre><code class="language-jsx(84)" data-language="jsx(84)" data-highlighted-line-numbers="">function dispatchAction(fiber, queue, action) {
+  !(numberOfReRenders &lt; RE_RENDER_LIMIT)
+    ? invariant(
+        false,
+        &quot;Too many re-renders. React limits the number of renders to prevent an infinite loop.&quot;
+      )
+    : void 0;
+
+  {
+    !(arguments.length &lt;= 3)
+      ? warning$1(
+          false,
+          &quot;State updates from the useState() and useReducer() Hooks don&#39;t support the &quot; +
+            &quot;second callback argument. To execute a side effect after &quot; +
+            &quot;rendering, declare it in the component body with useEffect().&quot;
+        )
+      : void 0;
+  }
+
+  var alternate = fiber.alternate;
+  if (
+    fiber === currentlyRenderingFiber$1 ||
+    (alternate !== null &amp;&amp; alternate === currentlyRenderingFiber$1)
+  ) {
+    // This is a render phase update. Stash it in a lazily-created map of
+    // queue -&gt; linked list of updates. After this render pass, we&#39;ll restart
+    // and apply the stashed updates on top of the work-in-progress hook.
+    didScheduleRenderPhaseUpdate = true;
+    var update = {
+      expirationTime: renderExpirationTime,
+      action: action,
+      eagerReducer: null,
+      eagerState: null,
+      next: null
+    };
+    if (renderPhaseUpdates === null) {
+      renderPhaseUpdates = new Map();
+    }
+    var firstRenderPhaseUpdate = renderPhaseUpdates.get(queue);
+    if (firstRenderPhaseUpdate === undefined) {
+      renderPhaseUpdates.set(queue, update);
+    } else {
+      // Append the update to the end of the list.
+      var lastRenderPhaseUpdate = firstRenderPhaseUpdate;
+      while (lastRenderPhaseUpdate.next !== null) {
+        lastRenderPhaseUpdate = lastRenderPhaseUpdate.next;
+      }
+      lastRenderPhaseUpdate.next = update;
+    }
+  } else {
+    flushPassiveEffects();
+
+    var currentTime = requestCurrentTime();
+    var _expirationTime = computeExpirationForFiber(currentTime, fiber);
+
+    var _update2 = {
+      expirationTime: _expirationTime,
+      action: action,
+      eagerReducer: null,
+      eagerState: null,
+      next: null
+    };
+
+    // Append the update to the end of the list.
+    var _last = queue.last;
+    if (_last === null) {
+      // This is the first update. Create a circular list.
+      _update2.next = _update2;
+    } else {
+      var first = _last.next;
+      if (first !== null) {
+        // Still circular.
+        _update2.next = first;
+      }
+      _last.next = _update2;
+    }
+    queue.last = _update2;
+
+    if (
+      fiber.expirationTime === NoWork &amp;&amp;
+      (alternate === null || alternate.expirationTime === NoWork)
+    ) {
+      // The queue is currently empty, which means we can eagerly compute the
+      // next state before entering the render phase. If the new state is the
+      // same as the current state, we may be able to bail out entirely.
+      var _lastRenderedReducer = queue.lastRenderedReducer;
+      if (_lastRenderedReducer !== null) {
+        var prevDispatcher = void 0;
+        {
+          prevDispatcher = ReactCurrentDispatcher$1.current;
+          ReactCurrentDispatcher$1.current = InvalidNestedHooksDispatcherOnUpdateInDEV;
+        }
+        try {
+          var currentState = queue.lastRenderedState;
+          var _eagerState = _lastRenderedReducer(currentState, action);
+          // Stash the eagerly computed state, and the reducer used to compute
+          // it, on the update object. If the reducer hasn&#39;t changed by the
+          // time we enter the render phase, then the eager state can be used
+          // without calling the reducer again.
+          _update2.eagerReducer = _lastRenderedReducer;
+          _update2.eagerState = _eagerState;
+          if (is(_eagerState, currentState)) {
+            console.log(&quot;直接退出&quot;);
+            // Fast path. We can bail out without scheduling React to re-render.
+            // It&#39;s still possible that we&#39;ll need to rebase this update later,
+            // if the component re-renders for a different reason and by that
+            // time the reducer has changed.
+            return;
+          }
+        } catch (error) {
+          // Suppress the error. It will throw again in the render phase.
+        } finally {
+          {
+            ReactCurrentDispatcher$1.current = prevDispatcher;
+          }
+        }
+      }
+    }
+    {
+      if (shouldWarnForUnbatchedSetState === true) {
+        warnIfNotCurrentlyBatchingInDev(fiber);
+      }
+    }
+    scheduleWork(fiber, _expirationTime);
+  }
+}
+</code></pre><p><code>_lastRenderedReducer</code> 就是 <code>basicStateReducer</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">basicStateReducer</span><span class="token punctuation">(</span><span class="token parameter">state<span class="token punctuation">,</span> action</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">return</span> <span class="token keyword">typeof</span> action <span class="token operator">===</span> <span class="token string">"function"</span> <span class="token operator">?</span> <span class="token function">action</span><span class="token punctuation">(</span>state<span class="token punctuation">)</span> <span class="token punctuation">:</span> action<span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>第三第四次会在这个判断语句里退出。</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token function">is</span><span class="token punctuation">(</span>_eagerState<span class="token punctuation">,</span> currentState<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// Fast path. We can bail out without scheduling React to re-render.</span>
+  <span class="token comment">// It's still possible that we'll need to rebase this update later,</span>
+  <span class="token comment">// if the component re-renders for a different reason and by that</span>
+  <span class="token comment">// time the reducer has changed.</span>
+  <span class="token keyword">return</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>那么第二次为什么不在这里退出呢 ？ 在第二次这里的语句是 <code>false</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">if</span> <span class="token punctuation">(</span>fiber<span class="token punctuation">.</span>expirationTime <span class="token operator">===</span> NoWork <span class="token operator">&amp;&amp;</span> <span class="token punctuation">(</span>alternate <span class="token operator">===</span> <span class="token keyword">null</span> <span class="token operator">||</span> alternate<span class="token punctuation">.</span>expirationTime <span class="token operator">===</span> NoWork<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre><p>追溯下内部的调用， 在第二次的时候 <code>fiber.expirationTime !== NoWork</code>, 所以这个判断语句就不会走, 那么第三次为什么又相等了呢？再一次看下 <code>bailoutHooks</code> 函数</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">bailoutHooks</span><span class="token punctuation">(</span><span class="token parameter">current<span class="token punctuation">,</span> workInProgress<span class="token punctuation">,</span> expirationTime</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  workInProgress<span class="token punctuation">.</span>updateQueue <span class="token operator">=</span> current<span class="token punctuation">.</span>updateQueue<span class="token punctuation">;</span>
+  workInProgress<span class="token punctuation">.</span>effectTag <span class="token operator">&amp;=</span> <span class="token operator">~</span><span class="token punctuation">(</span>Passive <span class="token operator">|</span> Update<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>current<span class="token punctuation">.</span>expirationTime <span class="token operator">&lt;=</span> expirationTime<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    current<span class="token punctuation">.</span>expirationTime <span class="token operator">=</span> NoWork<span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>current.expirationTime = NoWork;</code> 进行了赋值。所以这就是整个过程了。</p><h2 id="总结">总结</h2><p><code>class</code> 和 <code>hooks</code> 中基本保持一致, 但是 <code>hooks</code> 中会做一层 <code>Object.is</code> 的判断，
+所以在进行状态更新的时候， 需要注意下这点。还有在异步调用中， <code>hooks</code> 也无法拿到最新的值， 因为在一个函数中， 每次 <code>render</code> 都是新的函数， 所以输出的都是之前的值， 这个点要注意一下。这个可以参考 <code>Dan</code> 的博客 <a class=" " href="https://overreacted.io/a-complete-guide-to-useeffect/">A Complete Guide to useEffect</a></p><p><a class=" " href="https://codesandbox.io/s/hooks-vs-class-5buww">查看代码</a></p></div><footer class="BlogPostLayout_footer__1p0Ii"><h3 class="BlogPostLayout_title__1egAZ"><a class=" " href="/">lanyincao</a></h3><div class="
+      Bio_Bio__1eiKY
+      BlogPostLayout_bio__2AHhA
+    "><img src="/static/media/bio-pic.fdbb64ab.jpeg" alt="lanyincao"/><p>Personal blog by <a href="https://twitter.com/lanyincao">lanyincao</a>.<br/>I can&#x27;t sing, dance, rap but can code, 🏀</p></div><section class="BlogPostLayout_links__1fVhZ"><a class=" " href="/posts/2019-06-03/state/">← <!-- -->React Hooks State 🤔</a><a class="BlogPostLayout_next__3tOcG " href="/posts/2019-04-13/forwardRef/">React.forwardRef<!-- --> →</a></section></footer></article></main></div></div><script>!function(u){function e(e){for(var t,r,n=e[0],o=e[1],c=e[2],a=0,f=[];a<n.length;a++)r=n[a],l[r]&&f.push(l[r][0]),l[r]=0;for(t in o)Object.prototype.hasOwnProperty.call(o,t)&&(u[t]=o[t]);for(p&&p(e);f.length;)f.shift()();return d.push.apply(d,c||[]),i()}function i(){for(var e,t=0;t<d.length;t++){for(var r=d[t],n=!0,o=1;o<r.length;o++){var c=r[o];0!==l[c]&&(n=!1)}n&&(d.splice(t--,1),e=s(s.s=r[0]))}return e}var r={},f={21:0},l={21:0},d=[];function s(e){if(r[e])return r[e].exports;var t=r[e]={i:e,l:!1,exports:{}};return u[e].call(t.exports,t,t.exports,s),t.l=!0,t.exports}s.e=function(d){var e=[];f[d]?e.push(f[d]):0!==f[d]&&{1:1,11:1,12:1}[d]&&e.push(f[d]=new Promise(function(e,n){for(var t="static/css/"+({}[d]||d)+"."+{1:"2800b7fc",2:"31d6cfe0",3:"31d6cfe0",4:"31d6cfe0",5:"31d6cfe0",6:"31d6cfe0",7:"31d6cfe0",8:"31d6cfe0",9:"31d6cfe0",10:"31d6cfe0",11:"8dbc6811",12:"9aab19da",13:"31d6cfe0",14:"31d6cfe0",15:"31d6cfe0",16:"31d6cfe0",17:"31d6cfe0",18:"31d6cfe0",19:"31d6cfe0"}[d]+".chunk.css",o=s.p+t,r=document.getElementsByTagName("link"),c=0;c<r.length;c++){var a=(u=r[c]).getAttribute("data-href")||u.getAttribute("href");if("stylesheet"===u.rel&&(a===t||a===o))return e()}var f=document.getElementsByTagName("style");for(c=0;c<f.length;c++){var u;if((a=(u=f[c]).getAttribute("data-href"))===t||a===o)return e()}var i=document.createElement("link");i.rel="stylesheet",i.type="text/css",i.onload=e,i.onerror=function(e){var t=e&&e.target&&e.target.src||o,r=new Error("Loading CSS chunk "+d+" failed.\n("+t+")");r.request=t,n(r)},i.href=o,document.getElementsByTagName("head")[0].appendChild(i)}).then(function(){f[d]=0}));var r=l[d];if(0!==r)if(r)e.push(r[2]);else{var t=new Promise(function(e,t){r=l[d]=[e,t]});e.push(r[2]=t);var n,o=document.getElementsByTagName("head")[0],c=document.createElement("script");c.charset="utf-8",c.timeout=120,s.nc&&c.setAttribute("nonce",s.nc),c.src=s.p+"static/js/"+({}[d]||d)+"."+{1:"b92c5504",2:"61c14a7e",3:"eb71df06",4:"dc812a82",5:"8e805893",6:"eb3cf416",7:"ea93d973",8:"794ef84a",9:"e97c4388",10:"fb0080af",11:"9e63d0ee",12:"31d76608",13:"b787dedf",14:"678e07ab",15:"30cd6c1f",16:"db80ebde",17:"32898ce9",18:"74127409",19:"79829299"}[d]+".chunk.js",n=function(e){c.onerror=c.onload=null,clearTimeout(a);var t=l[d];if(0!==t){if(t){var r=e&&("load"===e.type?"missing":e.type),n=e&&e.target&&e.target.src,o=new Error("Loading chunk "+d+" failed.\n("+r+": "+n+")");o.type=r,o.request=n,t[1](o)}l[d]=void 0}};var a=setTimeout(function(){n({type:"timeout",target:c})},12e4);c.onerror=c.onload=n,o.appendChild(c)}return Promise.all(e)},s.m=u,s.c=r,s.d=function(e,t,r){s.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:r})},s.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},s.t=function(t,e){if(1&e&&(t=s(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var r=Object.create(null);if(s.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var n in t)s.d(r,n,function(e){return t[e]}.bind(null,n));return r},s.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return s.d(t,"a",t),t},s.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},s.p="/",s.oe=function(e){throw console.error(e),e};var t=window.webpackJsonp=window.webpackJsonp||[],n=t.push.bind(t);t.push=e,t=t.slice();for(var o=0;o<t.length;o++)e(t[o]);var p=n;i()}([])</script><script src="/static/js/20.40c457c6.chunk.js"></script><script src="/static/js/main.e993fd60.chunk.js"></script></body></html>

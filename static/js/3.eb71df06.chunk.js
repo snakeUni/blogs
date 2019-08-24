@@ -1,0 +1,2 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[3],{77:function(e,n,t){"use strict";t.r(n),n.default={title:"useCallback",tags:["react","callback"],spoiler:"we need cache.",getContent:function(){return t.e(12).then(t.bind(null,64))}}}}]);
+//# sourceMappingURL=3.eb71df06.chunk.js.map
