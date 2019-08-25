@@ -31,9 +31,6 @@ const store = createStore(reducer, {
   name: 'lanyincao',
   address: 'shanghai'
 });
-
-debugger;
-
 class App extends React.Component {
   render() {
     return <Provider store={store}>{this.props.children}</Provider>;

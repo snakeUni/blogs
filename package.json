@@ -11,6 +11,7 @@
     "feed": "^2.0.2",
     "import-all.macro": "^2.0.3",
     "lodash": "^4.17.11",
+    "mdx.macro": "^0.2.8",
     "navi": "^0.10.5",
     "navi-scripts": "^0.10.6",
     "netlify-cli": "2.6.0",

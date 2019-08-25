@@ -1,9 +1,3 @@
-import Demo from './react-redux-demo.tsx';
-import Block from '../../../components/block.tsx';
-import Context1 from './context1.jpg';
-import Context2 from './context2.jpg';
-import ChaosDemo from './react-redux-chaos.tsx';
-
 如何高效的使用 `context`, [上一篇文章](https://lanyincao.netlify.com/posts/2019-08-19/form/) 详细的讲述了如何写一个 `Form`, 以及如何改造 `Form` 的性能。那么是否同样的
 写法也可以运用于普通组件呢？
 
@@ -19,10 +13,6 @@ import ChaosDemo from './react-redux-chaos.tsx';
 问题呢？不妨用一个简单的 demo 来看一下。
 
 `react-redux-demo`
-
-<Block des='react-redux demo'>
-  <Demo />
-</Block>
 
 从 `console.log` 中可以看出在修改 count 的时候只有 `Count` 组件更新，在修改 `person` 的时候只有 `Person` 组件更新。因为无论是 `Count` 还是 `Person`，
 都在自己所需要的 `props` 发生变化的时候才会更新。这个是符合 `React` 的正常的数据流的，组件的 `props` 变化会让组件发生更新。
@@ -107,7 +97,7 @@ class Person extends React.Component<any> {
 点击 `increase` 或者 `decrease` 按钮，看一下控制台
 
 <div>
-  <img src={Context1} />
+  <img src='./context1.jpg' />
 </div>
 
 仔细观察下发现 `render count` 是正常的渲染，因为点击了 `increase` 或者 `decrease`, 但是 `mapCountStateToProps` 以及
@@ -555,15 +545,229 @@ if (deps) {
 
 基本上一个状态管理的所有代码已经讲清楚了，那么不妨试试。
 
-<Block des='自定义的状态管理'>
-  <ChaosDemo />
-</Block>
-
 点击 `increase` 或者 `decrease`, 只打印出了 `render count selector` 所以每次 `useSelector` 也只是单次渲染。这个也是局部渲染了。
 
 <div>
-  <img src={Context2} />
+  <img src='./context2.jpg' />
 </div>
+
+最后贴一下代码，代码也可以在[这里找到](https://github.com/snakeUni/lanyincaos.cn/tree/master/src/pages/posts/2019-08-24-how-to-use-context-efficient)
+
+`react-redux-demo`
+
+```js
+import * as React from 'react';
+import { Provider, connect } from 'react-redux';
+import { createStore } from 'redux';
+
+// 一个简单的 reducer
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increase': {
+      return { ...state, count: state.count + action.payload };
+    }
+
+    case 'decrease': {
+      return { ...state, count: state.count - action.payload };
+    }
+
+    case 'updateName': {
+      return { ...state, name: action.payload };
+    }
+
+    case 'updateAddress': {
+      return { ...state, address: action.payload };
+    }
+    default: {
+      return state;
+    }
+  }
+}
+
+const store = createStore(reducer, {
+  count: 0,
+  name: 'lanyincao',
+  address: 'shanghai'
+});
+class App extends React.Component {
+  render() {
+    return <Provider store={store}>{this.props.children}</Provider>;
+  }
+}
+
+function mapCountStateToProps(state) {
+  console.log('mapCountStateToProps', state);
+  const { count } = state;
+  return { count };
+}
+
+class Count extends React.Component<any, any> {
+  render() {
+    const { dispatch } = this.props;
+    console.log('render count');
+    return (
+      <div>
+        <div>count: {this.props.count}</div>
+        <button onClick={() => dispatch({ type: 'increase', payload: 2 })}>
+          increase
+        </button>
+        <button onClick={() => dispatch({ type: 'decrease', payload: 2 })}>
+          decrease
+        </button>
+      </div>
+    );
+  }
+}
+
+function mapPersonStateToProps(state) {
+  console.log('mapPersonStateToProps', state);
+  const { name, address } = state;
+  return { name, address };
+}
+
+class Person extends React.Component<any> {
+  render() {
+    const { dispatch, name, address } = this.props;
+    console.log('render person');
+    return (
+      <div>
+        <div>
+          <span>name: {name}</span>
+          <span style={{ marginLeft: 20 }}>address: {address}</span>
+        </div>
+        <div>
+          <button
+            onClick={() => dispatch({ type: 'updateName', payload: '牧云云' })}
+          >
+            updateName
+          </button>
+          <button
+            onClick={() =>
+              dispatch({ type: 'updateAddress', payload: 'hangzhou' })
+            }
+          >
+            updateAddress
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
+// count
+const ConnectCount = connect(mapCountStateToProps)(Count);
+// person
+const ConnectPerson = connect(mapPersonStateToProps)(Person);
+
+export default function Demo() {
+  return (
+    <div>
+      <App>
+        <ConnectCount />
+        <ConnectPerson />
+      </App>
+    </div>
+  );
+}
+```
+
+`react-redux-chaos demo`
+
+```js
+import * as React from 'react';
+import { useStore, Provider, useSelector } from 'react-redux-chaos';
+
+const initialState = { count: 0, name: 'lanyincao', address: 'shanghai' };
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increase': {
+      return { ...state, count: state.count + action.payload };
+    }
+
+    case 'decrease': {
+      return { ...state, count: state.count - action.payload };
+    }
+
+    case 'updateName': {
+      return { ...state, name: action.payload };
+    }
+
+    case 'updateAddress': {
+      return { ...state, address: action.payload };
+    }
+    default: {
+      return state;
+    }
+  }
+}
+
+function App({ children }) {
+  const store = useStore(reducer, initialState);
+  return <Provider value={store}>{children}</Provider>;
+}
+
+function Count() {
+  const { getState, dispatch } = useSelector(() => {
+    console.log('render count selector');
+    return ['count'];
+  });
+
+  const state: any = getState();
+  return (
+    <div>
+      <div>count: {state.count}</div>
+      <button onClick={() => dispatch({ type: 'increase', payload: 2 })}>
+        increase
+      </button>
+      <button onClick={() => dispatch({ type: 'decrease', payload: 2 })}>
+        decrease
+      </button>
+    </div>
+  );
+}
+
+function Person() {
+  const { getState, dispatch } = useSelector(() => {
+    console.log('render person selector');
+    return ['name', 'address'];
+  });
+
+  const state: any = getState();
+
+  return (
+    <div>
+      <div>
+        <span>name: {state.name}</span>
+        <span style={{ marginLeft: 20 }}>address: {state.address}</span>
+      </div>
+      <div>
+        <button
+          onClick={() => dispatch({ type: 'updateName', payload: '牧云云' })}
+        >
+          updateName
+        </button>
+        <button
+          onClick={() =>
+            dispatch({ type: 'updateAddress', payload: 'hangzhou' })
+          }
+        >
+          updateAddress
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function Demo() {
+  return (
+    <App>
+      <Count />
+      <Person />
+    </App>
+  );
+}
+```
 
 # conclusion
 
