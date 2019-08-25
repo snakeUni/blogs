@@ -96,9 +96,7 @@ class Person extends React.Component<any> {
 
 点击 `increase` 或者 `decrease` 按钮，看一下控制台
 
-<div>
-  <img src='./context1.jpg' />
-</div>
+![context1](https://user-images.githubusercontent.com/17973020/63645933-381e0480-c73b-11e9-891b-f4bf7ba23a84.jpg)
 
 仔细观察下发现 `render count` 是正常的渲染，因为点击了 `increase` 或者 `decrease`, 但是 `mapCountStateToProps` 以及
 `mapPersonStateToProps` 每次都会被输出，即使只更新了 `count` 组件的 `props`, 其实这个大家不同太过于关心，我之前在 `twitter` 上
@@ -547,9 +545,7 @@ if (deps) {
 
 点击 `increase` 或者 `decrease`, 只打印出了 `render count selector` 所以每次 `useSelector` 也只是单次渲染。这个也是局部渲染了。
 
-<div>
-  <img src='./context2.jpg' />
-</div>
+![context2](https://user-images.githubusercontent.com/17973020/63645935-4c620180-c73b-11e9-8536-122dfed705a7.jpg)
 
 最后贴一下代码，代码也可以在[这里找到](https://github.com/snakeUni/lanyincaos.cn/tree/master/src/pages/posts/2019-08-24-how-to-use-context-efficient)
 
