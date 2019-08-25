@@ -1,0 +1,16 @@
+.blog-block {
+  border: 1px solid #ebedf0;
+  border-radius: 4px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.blog-demo {
+  padding: 20px;
+}
+
+.blog-des {
+  padding: 10px 20px;
+  color: #314659;
+  border-top: 1px dashed #ebedf0;
+}
