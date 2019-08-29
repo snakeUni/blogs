@@ -49,9 +49,10 @@ function BlogIndexPage({
           <a href="./rss.xml" target="_blank" style={{ float: 'right' }}>
             RSS
           </a>
-          <NavLink href="./about">About</NavLink> &bull;{' '}
-          <NavLink href="./tags">Tags</NavLink> &bull;{' '}
-          <a href="https://github.com/snakeUni/uni-blog">Source</a>
+          <a href="https://twitter.com/lanyincao">twitter</a> &bull;{' '}
+          <a href="https://github.com/snakeUni/uni-blog">github</a> &bull;{' '}
+          <NavLink href="./about">About Me</NavLink> &bull;{' '}
+          <NavLink href="./tags">Tags</NavLink>
         </div>
       </footer>
     </div>

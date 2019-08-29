@@ -5,6 +5,7 @@ import siteMetadata from '../siteMetadata';
 import ArticleMeta from './ArticleMeta';
 import Bio from './Bio';
 import styles from './BlogPostLayout.module.css';
+import Pay from './zf.jpeg';
 
 interface BlogPostLayoutProps {
   blogPathname: string;
@@ -38,6 +39,13 @@ function BlogPostLayout({ blogPathname }: BlogPostLayoutProps) {
           >
             <MDXComponent />
           </MDXProvider>
+          <div
+            className="pay"
+            style={{ textAlign: 'center', marginTop: '5rem' }}
+          >
+            <h4>打赏</h4>
+            <img src={Pay} style={{ width: '30%' }} />
+          </div>
           <footer className={styles.footer}>
             <h3 className={styles.title}>
               <NavLink href={blogPathname}>{siteMetadata.title}</NavLink>
