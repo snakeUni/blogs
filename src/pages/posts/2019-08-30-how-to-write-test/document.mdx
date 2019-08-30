@@ -11,3 +11,169 @@
 - 知道部分测试，但是不会写
 - 忙于业务，根本没时间去写
 - 代码完美，毫无破绽，完全不需要去写
+
+那么是否需要些测试呢？测试的作用是让你对你的代码有信心，可以及时的发现内部的问题，然后及时修复，避免发到线上的时候会出现线上问题，
+那么应该如何写测试呢？
+
+## what are you testing?
+
+在开始写一个测试的时候，需要问自己一个问题，需要测试什么？首先对理解想要测试的什么，才可以真正的开始写测试，比如一个 `sum` 函数
+
+```js
+function sum(a, b) {
+  return a + b;
+}
+```
+
+这是一个求和函数，假如此时准备开始写测试了，所以确认需要测试的就是 `sum` 这个函数, 知道这个函数的功能就是求和，所以第一步就是 `确认需要测试的是什么`
+
+## What should it do?
+
+测试的这个做了什么，还是以求和函数为例，求和函数做的就是求和，并且知道调用求和函数 `sum(1,2)` 应该返回数字 `3`, 只有知道测试什么以及，测试的这个做了
+什么才能很多的写出测试的描述信息
+
+```js
+test('sum(1, 2) should return 3');
+```
+
+## what is the Output
+
+输入是什么，在写一个测试的时候需要知道两个输入，第一个是实际的输出，比如 `sum(1, 2)`, 在调用 `sum(1, 2)` 的时候应该返回 `3`, 这个数字 `3` 就是实际的输出。
+第二个是期望的输出，这通常是一个断言，比如 `sum(2, 2)` 实际输出是 `4`, 但是期望输出 `5`, 那么是否是代码内部逻辑的错误呢？这发生错误的时候，就需要去查看是否
+是内部逻辑导致的原因。
+
+## How to write test
+
+在写测试开始之前，上面三个问题是首先要考虑的，还是以 `sum` 函数为例，想要测试 `sum` 函数，首先就是需要测试正常的情况，比如都是数字的时候，现在开始写一个基本的测试
+
+```js
+test('这里是描述信息，写的是测试了什么，以及期望返回是什么', () => {
+  // 这里是一个回调，主要写测试的代码 比如
+  const total = sum(1, 1);
+  // 接下来开始写断言，total 期望的值是 2, 所以可以写, 这里使用的都是 jest
+  expect(total).toBe(2);
+});
+```
+
+通过这样一个基础的测试就可以完成了。这是对于`工具函数`的基本测试，那么对于 `react component` 以及自定义的 `react hook` 应该如何测试呢？
+
+## test react component
+
+不妨写一个基础的 `Count` 组件
+
+```js
+function Count() {
+  const [count, setCount] = useState(0);
+  return (
+    <div>
+      <span>count: {count}</span>
+      <button onClick={() => setCount(count + 1)}>increase</button>
+      <button onClick={() => setCount(count - 1)}>decrease</button>
+    </div>
+  );
+}
+```
+
+这是一个 `Count` 基础组件, 这个组件包含了两个功能，首先是 `increase` 增加 `count`, 还有一个是 `decrease` 减少 `count`, 那么对于
+这个组件需要测试什么呢？针对这个组件，需要测试的就是 `increase` 和 `decrease`, 首先要保证这两个按钮的功能是正常的，否则要用户使用的时候
+很可能就会存在 `bug` 导致白屏。
+
+`后面使用的测试库都是 @testing/react-library`
+
+现在开始写这个测试，首先按照文章开头说的，需要测试的是什么，需要测试的是 `Count` 组件，那么需要测试 `Count` 组件的什么？需要测试的是 `Count`
+组件的 `increase` 和 `decrease` 功能。现在知道测试的是什么了，那么接下来这个组件的行为是什么？点击 `increase` 期望 `count` 是增加了 `1`,
+点击 `decrease`, 期望 `count` 是减少了 `1`。那么现在所有情况都知道了，不妨开始写这个测试。
+
+```js
+import * as React from 'react';
+import { render, fireEvent } from '@testing/react-library';
+
+test('expect count increase 1 by trigger increase', () => {
+  // render 方法是 @testing/react-library 内置的方法
+  // getByText 是通过文本来查找对应的 dom 节点
+  const { getByText } = render(<Count />);
+  // 找到 increase 的 dom 节点, getByText 支持正则表达式
+  const increaseNode = getByText(/increase/i);
+  // 触发点击效果
+  fireEvent.click(increaseNode);
+  // 这个的断言是很重要的, 在 Count 组件中有个 <span>count: {count}</span>
+  // 所以点击按钮后，这里的 `count` 变为了 2, 只需要查找这个 2 是否存在
+  // toBeNull 都是 jest 中的方法
+  expect(getByText(/count: 2/i)).not.toBeNull();
+});
+```
+
+`increase` 的测试是完全通过的，那么 `decrease` 也是一样的。
+
+```js
+import * as React from 'react';
+import { render, fireEvent } from '@testing/react-library';
+
+test('expect count decrease 1 by trigger decrease', () => {
+  // render 方法是 @testing/react-library 内置的方法
+  // getByText 是通过文本来查找对应的 dom 节点
+  const { getByText } = render(<Count />);
+  // 找到 increase 的 dom 节点, getByText 支持正则表达式
+  const decreaseNode = getByText(/decrease/i);
+  // 触发点击效果
+  fireEvent.click(decreaseNode);
+  // 这个的断言是很重要的, 在 Count 组件中有个 <span>count: {count}</span>
+  // 所以点击按钮后，这里的 `count` 变为了 -1, 只需要查找这个 -1 是否存在
+  // toBeNull 都是 jest 中的方法
+  expect(getByText(/count: -1/i)).not.toBeNull();
+});
+```
+
+这就是一个基础的组件的测试。那么如果是自定义的 `Hook` 呢?
+
+## test custom hook
+
+自定义的 `Hook` 通常返回的并不是 `ReactNode`, 而是一些值或者说是函数之类的。那么不妨将上面的 `Count` 组件修改成一个
+自定义的 `Count` hook。
+
+首先确认这个自定义的 `Hook`, 有 `increase` 和 `decrease` 功能，以及应该返回 `count` 变量。那么开始写这个自定义的 `Hook`
+
+```js
+function useCount() {
+  const [count, setCount] = useState(0);
+
+  const increase = () => {
+    setCount(count + 1);
+  };
+
+  const decrease = () => {
+    setCount(count - 1);
+  };
+
+  return [count, { increase, decrease }];
+}
+```
+
+针对这个应该如何测试呢？这个就是一个普通的函数，但是又不能当做普通函数来测试。这里也[使用一个库](https://github.com/testing-library/react-hooks-testing-library/issues)，这个库本身很简单，就是封装了 `react` 提供的测试工具。
+
+开始这个测试
+
+```js
+import { renderHook, act } from 'react-hooks-testing-library';
+
+test('use count', () => {
+  const { result } = renderHook(() => useCount());
+  // 拿到返回的结果, result 包含一个 current, 其中 current 指向返回值
+  expect(result.current[0]).toBe(0);
+  // 调用 increase
+  act(() => {
+    result.current[1].increase();
+  });
+  expect(result.current[0]).toBe(1);
+  // 调用 decrease, 因为之前已经变为 1 了
+  act(() => {
+    result.current[1].decrease();
+  });
+  expect(result.current[0]).toBe(0);
+});
+```
+
+## conclusion
+
+在写一个测试的时候首先需要明确测试的是什么？知道测试的是什么后，需要知道测试的这个做了什么？然后输出是什么？期望输入是什么？当知道了这些之后
+再去写测试，就会很简单。
