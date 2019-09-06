@@ -1,0 +1,221 @@
+所有的库都会有一些微妙的规则，您必须遵循这些规则才能很好的工作。通常，有些规则是隐式的，没有文档的，您必须边走边学习。
+
+比如在使用 React Hook 的时候，必须要遵守 `Hook` 的规则，在使用 Vue 的时候必须要遵守 Vue 的使用规则。 这里主要谈一下 `React` 的一些隐式规则
+
+## What Functions Are "Pure"?
+
+[Pure function](https://en.wikipedia.org/wiki/Pure_function) 在维基百科中主要有两点的解释
+
+- Its return value is the same for the same arguments (no variation with local static variables, non-local variables, mutable reference arguments or input streams from I/O devices).
+  `相同的输入总是有相同的输出`
+- Its evaluation has no side effects (no mutation of local static variables, non-local variables, mutable reference arguments or I/O streams).
+  `没有副作用，比如 IO 的写操作`
+
+那么在 `React` 中有哪些方法被认识是 "pure" 的
+
+在 `class` 中通常 `constructor`, `getDerivedStateFromProps`, `shouldComponentUpdate` and `render` 被认为是纯的.
+
+```js
+class MyComponent extends React.Component {
+  constructor() {
+    // pure
+  }
+
+  static getDerivedStateFromProps() {
+    // pure
+  }
+
+  shouldComponentUpdate() {
+    // pure
+  }
+
+  render() {
+    // pure
+  }
+}
+```
+
+`componentDidMount`, `componentDidUpdate`, `componentWillUnmount` 和自定义的事件函数并不被要求是纯的。
+
+```js
+class MyComponent extends React.Component {
+  componentDidMount() {
+    // not pure
+  }
+  componentDidUpdate() {
+    // not pure
+  }
+  componentWillUnmount() {
+    // not pure
+  }
+  handleClick = () => {
+    // not pure
+  };
+  render() {
+    // pure
+    return <div onClick={this.handleClick} />;
+  }
+}
+```
+
+`setState` 的第一个参数要求必须是纯的
+
+```js
+this.setState(() => {
+  // pure
+});
+```
+
+但是第二个参数并不要求是纯的
+
+```js
+this.setState({}, () => {
+  // not pure
+});
+```
+
+函数式组件也是纯的
+
+```js
+function MyComponent() {
+  // pure
+}
+```
+
+### Getter in State
+
+`setState` 还有一个特定的限制。传递给 `setState` 或者第一个参数为函数时返回的对象不能包含违反上述任何规则的 `getter` 方法，因为它们也是纯函数的一部分。
+
+## What Does "Pure" Mean in React?
+
+在 `React` 中，纯函数通常意味着是[幂等](https://zh.wikipedia.org/wiki/%E5%86%AA%E7%AD%89)的
+
+### Forbidden
+
+---
+
+通常来说这意味着在这些函数中，你不能：
+
+- 修改变量的绑定，除非该绑定是`新创建的`, 因为如果是新创建的那么每次在调用这个函数的时候都会新创建这个绑定，那么即使内部修改也是没问题的
+- 修改对象上的属性，除非该对象是`新创建的`
+
+```js
+function a() {
+  // pure
+  const b = {};
+  b.a = 1;
+}
+```
+
+在 `a` 中， `b` 是新创建的对象，所以可以修改对象上的属性。因为每次调用的时候都会重复这个操作
+
+- 修改 `this` 上的属性，除非是在构造函数中
+
+```js
+function a() {
+  this.b = 1;
+}
+```
+
+虽然每次 `b` 都被赋值为 1，但是在其他函数中用到了这个 `b` 的时候就被修改了
+
+- 从对象中读取属性，除非该对象是`新创建的`， 或者属性在读取一次后不会更改
+
+```js
+function a() {
+  // not pure
+  const b = this.a;
+  const v = { a: 1, b: 2 };
+  // pure
+  v.a;
+}
+```
+
+在 `a` 中读取了 this 上的 a, 但是这个 a 如果在其他地方被改变了就是不行的。
+
+- 读取变量绑定，除非该对象是`新创建的`, 或者绑定在读取一次之后不再更改。
+- 调用 `Math.random()` 或者 `Date.now()`, 因为这样读取的值是可变的。
+- 调用 `setState`, 因为它会突变
+- 发起网络请求(POST)、文件系统或其他 I/O, 将其写入持久性存储。比如，日志、创建、更新或删除。
+- 创建一个新的组件类型。新的组件会被使用后面的 `JSX` 中。
+
+```js
+function A() {
+  const C = () => null;
+}
+```
+
+这样每次 `render` 都会创建一个新的 `C`
+
+- 调用另一个可能执行以上任何操作的函数。
+
+`新创建的`意味着每次调用该函数，都会重复这一步骤。
+
+### Allowed
+
+虽然有一些可能不认为是纯的，但是在 `React` 中那是 ok 的
+
+- 读取 `this.props` 或者 `this.state` 在类组件中的是完全可以的，虽然它们会改变
+- 抛出错误或者任何其他对象也是可以的
+- 只要对象是`新创建的`, 就可以修改对象
+- 只要绑定是`新创建的`, 就可以修改绑定
+- 你可以调用一个函数来修改传入的对象，只要该对象是`新创建的`
+- 在构造函数中修改属性是可以的，因为它们是在类构造函数中`新创建的`
+- 创建非纯函数是可以的，只要它们后面在纯函数之外调用
+- 发出网络请求(GET), 从文件系统或其他 I/O 中读取数据是可以的
+
+### Lazy Initialization
+
+在这些规则中有一个例外就是，如果一个值用于延迟初始化，则可以读取和修改它。意思就是，如果值没有被初始化则初始化，如果初始化了则进行缓存并直接读取值。
+
+```js
+var lazy;
+function MyComponent() {
+  if (!lazy) {
+    lazy = function() {}; // ok
+  }
+  return lazy; // ok
+}
+```
+
+这也可以用于多个值，只要 key 是唯一就好
+
+```js
+var cache = new Map();
+function MyComponent(props) {
+  if (!cache.has(props.id)) {
+    cache.set(props.id, function() {}); // ok
+  }
+  return cache.get(props.id); // ok
+}
+```
+
+## Mutating Objects Created by Render
+
+另外一个限制是，在渲染完成后，您不能修改在这些函数中创建的对象或闭包绑定。它们是隐式冻结的。例外情况是存储在状态对象中的可变对象。
+
+```js
+function Foo() {
+  let x = { active: false };
+  let y = 0;
+  let clickHandler = () => {
+    x.active = true; // not ok
+    y++; // not ok
+  };
+  return <div onClick={clickHandler} />;
+}
+```
+
+```js
+class Component extends React.Component {
+  state = { mutableBox: { active: false, count: 0 } };
+  clickHandler = () => {
+    this.state.mutableBox.active = true; // ok, but discouraged
+    this.state.mutableBox.count++; // ok, but discouraged
+    this.forceUpdate();
+  };
+  render() {
+    return <div onClick={this.clickHandler} />;
+  }
+}
+```
