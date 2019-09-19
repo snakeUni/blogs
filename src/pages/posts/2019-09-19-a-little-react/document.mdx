@@ -1,0 +1,242 @@
+本来是不打算写这篇文章的，但是最近正好遇到了一些问题，或者说是组内遇到了一些问题，就顺便写这篇文章
+
+## 目录
+
+- React Virtual Dom Terminology
+- useLayoutEffect and useEffect
+
+## React Virtual Dom Terminology
+
+在 React 中有几个类型需要区分清楚，在同 `TS` 写的时候也会经常遇到这几种类型
+
+- ReactElement / ReactElement Factory
+- ReactNode
+- ReactComponent / ReactComponent Class
+
+### React Elements
+
+在 React 中原始类型就是 ReactElement，ReactElement 有四个属性分别为 `type`, `props`, `key`, `ref`. 后续 key 有可能会从 props 中
+进行剥离. 并且也不存在方法和其他的任何东西在 `prototype` 上.
+
+在 React 中可以通过调用 React.createElement 来创建
+
+```js
+const root = React.createElement('div');
+```
+
+为了渲染到 DOM 中，需要把创建的 `ReactElement` 传递给 `React.render` 并且第二个参数是正常的 DOM 元素比如 `HTMLElement`, `ReactElement` 是一个
+无状态的，不可突变的，虚拟的 dom element。
+
+```js
+React.render(root, document.body);
+```
+
+如果需要传递额外的属性，在 React.createElement 的第二个参数传递提个对象，第三个参数是一个 child
+
+```js
+const child = React.createElement('div', null, 'text');
+const root = React.createElement('div', { className: 'my-root' }, child);
+React.render(root, document.body);
+```
+
+如果使用 `JSX`, 那么这样写也是一样的
+
+```js
+const root = (
+  <div className='my-root'>
+    <div>text</div>
+  </div>
+);
+React.render(root, document.body);
+```
+
+#### Factory
+
+一个 `ReactElement` 的工厂是一个简单的用来创建 `ReactElement` 带着特定的 `type`。React 本身内部是有这样的一个函数的。
+
+```js
+function createFactory(type) {
+  return React.createElement.bind(null, type);
+}
+```
+
+这样可以快速创建一个带有类型的函数，然后在此调用函数，不需要在传递额外的类型。比如不在需要每次都传入类型 `React.createElement('type')`
+
+```js
+const div = createFactory('div');
+const root = div({ className: 'my-root' });
+React.render(root, document.body);
+```
+
+如果使用的是 `JSX` 的话，那么根本不需要这么做， React 内部已经处理好了。
+
+### React Nodes
+
+`React Node` 可能是其中的一种：
+
+- React Element
+- string
+- number
+- ReactFrament
+
+可以直接看 ReactNode 的定义
+
+```js
+type ReactNode =
+  | ReactChild
+  | ReactFragment
+  | ReactPortal
+  | boolean
+  | null
+  | undefined;
+```
+
+相关类型的定义
+
+```js
+type ReactText = string | number;
+type ReactChild = ReactElement | ReactText;
+
+interface ReactNodeArray extends Array<ReactNode> {}
+type ReactFragment = {} | ReactNodeArray;
+```
+
+`React Element`
+
+```js
+interface ReactElement<P = any, T extends string | JSXElementConstructor<any> = string | JSXElementConstructor<any>> {
+      type: T;
+      props: P;
+      key: Key | null;
+  }
+```
+
+### React Components
+
+一个 `React Components` Class 就是一个简单的 js class
+
+```js
+const MyComponent = React.createClass({
+  render: () => {...}
+});
+```
+
+当这个构造函数被调用的时候，将返回一个对象，并且一定要有一个 `render` 函数在内部。这个对象就是 `ReactComponent`
+
+```js
+const component = new MyComponent(props); // never do this
+```
+
+除非是为了测试，否则千万不要这么写。React 会在内部调用的。Dan 也在[之前的文章](https://overreacted.io/how-does-react-tell-a-class-from-a-function/)中说过原因
+
+也可以把 `ReactComponent` class 传递给 React.createElement 得到一个 ReactElement
+
+```js
+const element = React.createElement(MyComponent);
+```
+
+也可以使用 `JSX` 的方式
+
+```js
+const element = <MyComponent />;
+```
+
+当这个被传递给 `React.render` 时，React 将调用构造函数并且返回一个 `ReactComponent`
+
+```js
+const component = React.render(element, document.body);
+```
+
+如果继续调用 `React.render` 带着相同的 `ReactElement` 和相同的 dom, 那么总是返回相同的实例
+
+```js
+const componentA = React.render(<MyComponent />, document.body);
+const componentB = React.render(<MyComponent />, document.body);
+componentA === componentB; // true
+```
+
+## useLayoutEffect & useEffect
+
+在[官方文档](https://reactjs.org/docs/hooks-intro.html) 中已经详细的介绍了各个 hook 的区别。
+
+官方介绍是这样说的：
+
+The signature is identical to useEffect, but it fires synchronously after all DOM mutations.
+Use this to read layout from the DOM and synchronously re-render.
+Updates scheduled inside useLayoutEffect will be flushed synchronously, `before the browser has a chance to paint`.
+
+Tip
+
+If you’re migrating code from a class component, note useLayoutEffect fires in the same phase as componentDidMount and componentDidUpdate.
+However, we recommend starting with useEffect first and only trying useLayoutEffect if that causes a problem.
+
+If you use server rendering, keep in mind that neither useLayoutEffect nor useEffect can run until the JavaScript is downloaded.
+This is why React warns when a server-rendered component contains useLayoutEffect.
+To fix this, either move that logic to useEffect (if it isn’t necessary for the first render),
+or delay showing that component until after the client renders (if the HTML looks broken until useLayoutEffect runs).
+
+To exclude a component that needs layout effects from the server-rendered HTML,
+render it conditionally with `showChild && <Child />` and defer showing it with useEffect(() => { setShowChild(true); }, []).
+This way, the UI doesn’t appear broken before hydration.
+
+这是在 `useLayoutEffect` 中介绍的。
+
+[useEffect](https://reactjs.org/docs/hooks-reference.html#useeffect) 的介绍参考官网。
+
+其中在 `useLayoutEffect` 中的介绍有几点需要关注的。首先 `it fires synchronously after all DOM mutations`, 同步触发。
+第二 `Updates scheduled inside useLayoutEffect will be flushed synchronously, before the browser has a chance to paint`
+在浏览器有机会绘画之前。
+
+那这个到底适合于什么样的场景呢？不如先从一个例子来分析, 假设此时有一个搜索历史的的需求，搜索过的内容需要增加到搜索历史中。并且搜索历史不能超过
+一行，超过了一行则进行截取，把超过的那部分去掉。
+
+<div>
+  <img src={require('./his.jpg')} />
+</div>
+
+此时我们应该如何去做。基本做法应该是点击搜索，在 `useEffect` 里进行计算已渲染的历史的节点的宽度，然后遍历历史的 dom 节点进行宽度相加，最后来判断
+是否超过了最大宽度，如果超过了最大宽度，那么进行截取，否则不进行截取。（当然如果要是能提前知道 `input` 输入的内容区的宽度，那么就可以在事件函数中进行提前判断处理)。
+目前处理是在 `useEffect` 中进行遍历来计算宽度的。这个看起来是没有问题的，对吧。不妨看一下效果
+
+<div>
+  <img src={require('./useEffect.gif')} />
+</div>
+
+可以很容易的看到，有一个闪动的过程，因为在 useEffect 中进行了截取，此时这个 dom 已经被渲染到页面上了。在进行截取，就会看到`闪动`的现象。
+
+```js
+useEffect(() => {
+  const nextHistory = getNextHistory();
+  saveHistory(nextHistory);
+}, [history.length]);
+
+const getNextHistory = (): string[] => {
+  let cloneHistory = history.slice();
+  let totalWidth = 0;
+  for (let i = 0; i < historyRefs.current.length; i++) {
+    const node = historyRefs.current[i];
+    if (node) {
+      const { width } = node.getBoundingClientRect();
+      totalWidth += width + offset;
+      if (totalWidth > MAX_HISTORY_LENGTH) {
+        cloneHistory = cloneHistory.slice(0, i);
+        break;
+      }
+    }
+  }
+  return cloneHistory;
+};
+```
+
+那如果换成 `useLayoutEffect` 呢？
+
+<div>
+  <img src={require('./useLayoutEffect.gif')} />
+</div>
+
+可以看出在使用 `useLayoutEffect` 的时候之前的闪动不存在了。回头看一下之前标记的地方。其中有一处吃这样的
+
+`Updates scheduled inside useLayoutEffect will be flushed synchronously, before the browser has a chance to paint`
+
+所以针对出现需要频繁修改 dom 或者需要在 dom 渲染后又要立马操作 dom 的以及进行一些布局操作的都可以使用 `useLayoutEffect`。比如 `Popover`,
+`ToolTip`, `DronDown` 等相关组件。
