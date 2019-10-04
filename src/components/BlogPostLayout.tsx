@@ -39,13 +39,13 @@ function BlogPostLayout({ blogPathname }: BlogPostLayoutProps) {
           >
             <MDXComponent />
           </MDXProvider>
-          <div
+          {/* <div
             className="pay"
             style={{ textAlign: 'center', marginTop: '5rem' }}
           >
             <h4>打赏</h4>
             <img src={Pay} style={{ width: '30%' }} />
-          </div>
+          </div> */}
           <footer className={styles.footer}>
             <h3 className={styles.title}>
               <NavLink href={blogPathname}>{siteMetadata.title}</NavLink>
