@@ -36,7 +36,7 @@
     "serve": "navi-scripts serve",
     "clean": "rimraf build",
     "deploy": "netlify deploy --dir=build",
-    "deploy:prod": "yarn build && netlify deploy --dir=build --prod"
+    "deploy:prod": "netlify deploy --dir=build --prod"
   },
   "eslintConfig": {
     "extends": "react-app"
