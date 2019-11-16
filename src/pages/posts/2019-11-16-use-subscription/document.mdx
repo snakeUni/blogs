@@ -1,0 +1,368 @@
+`useSubscription` 即订阅模式，这是 `react` 自身提供的 `Hook`, 本文主要通过几个方面来介绍这个 `Hook`, 大家也可以自行参考[官网](https://github.com/facebook/react/blob/master/packages/use-subscription/README.md)
+
+## 目录
+
+- 为什么会有这个 useSubscription
+  - When should you NOT use this?
+  - What types of subscriptions can this support?
+- useSubscription 的内部实现
+- 手动实现一个 useSubscription
+
+### 为什么会有这个 useSubscription
+
+[useSubscription](https://github.com/facebook/react/tree/master/packages/use-subscription) 的出现主要是为了在 React concurrent mode 下可以安全的管理状态。
+主要用于读取某个值，值发生变化的时候可以同步更新相应的组件然后展示出来。
+
+#### When should you NOT use this?
+
+- Redux/Flux stores should use the context API instead.
+- I/O subscriptions (e.g. notifications) that update infrequently should use a mechanism like react-cache instead.
+- Complex libraries like Relay/Apollo should manage subscriptions manually with the same techniques which this library uses under the hood (as referenced here) in a way that is most optimized for their library usage.
+
+#### What types of subscriptions can this support?
+
+This abstraction can handle a variety of subscription types, including:
+
+- Event dispatchers like HTMLInputElement.
+- Custom pub/sub components like Relay's FragmentSpecResolver.
+- Observable types like RxJS BehaviorSubject and ReplaySubject. (Types like RxJS Subject or Observable are not supported, because they provide no way to read the "current" value after it has been emitted.)
+
+Note that JavaScript promises are also not supported because they provide no way to synchronously read the "current" value.
+
+以上信息都来自官网
+
+### useSubscription 的内部实现
+
+`useSubscription` 的[内部代码](https://github.com/facebook/react/blob/master/packages/use-subscription/src/useSubscription.js)很简单，不超过 20 行，在内部实现对任意的值的订阅
+
+```js{24-28,33-47}
+import { useDebugValue, useEffect, useState } from "react";
+
+// Hook used for safely managing subscriptions in concurrent mode.
+//
+// In order to avoid removing and re-adding subscriptions each time this hook is called,
+// the parameters passed to this hook should be memoized in some way–
+// either by wrapping the entire params object with useMemo()
+// or by wrapping the individual callbacks with useCallback().
+export function useSubscription<Value>({
+  // (Synchronously) returns the current value of our subscription.
+  getCurrentValue,
+
+  // This function is passed an event handler to attach to the subscription.
+  // It should return an unsubscribe function that removes the handler.
+  subscribe
+}: {|
+  getCurrentValue: () => Value,
+  subscribe: (callback: Function) => () => void
+|}): Value {
+  // Read the current value from our subscription.
+  // When this value changes, we'll schedule an update with React.
+  // It's important to also store the hook params so that we can check for staleness.
+  // (See the comment in checkForUpdates() below for more info.)
+  const [state, setState] = useState(() => ({
+    getCurrentValue,
+    subscribe,
+    value: getCurrentValue()
+  }));
+
+  let valueToReturn = state.value;
+
+  // If parameters have changed since our last render, schedule an update with its current value.
+  if (
+    state.getCurrentValue !== getCurrentValue ||
+    state.subscribe !== subscribe
+  ) {
+    // If the subscription has been updated, we'll schedule another update with React.
+    // React will process this update immediately, so the old subscription value won't be committed.
+    // It is still nice to avoid returning a mismatched value though, so let's override the return value.
+    valueToReturn = getCurrentValue();
+
+    setState({
+      getCurrentValue,
+      subscribe,
+      value: valueToReturn
+    });
+  }
+
+  // Display the current value for this hook in React DevTools.
+  useDebugValue(valueToReturn);
+
+  // It is important not to subscribe while rendering because this can lead to memory leaks.
+  // (Learn more at reactjs.org/docs/strict-mode.html#detecting-unexpected-side-effects)
+  // Instead, we wait until the commit phase to attach our handler.
+  //
+  // We intentionally use a passive effect (useEffect) rather than a synchronous one (useLayoutEffect)
+  // so that we don't stretch the commit phase.
+  // This also has an added benefit when multiple components are subscribed to the same source:
+  // It allows each of the event handlers to safely schedule work without potentially removing an another handler.
+  // (Learn more at https://codesandbox.io/s/k0yvr5970o)
+  useEffect(() => {
+    let didUnsubscribe = false;
+
+    const checkForUpdates = () => {
+      // It's possible that this callback will be invoked even after being unsubscribed,
+      // if it's removed as a result of a subscription event/update.
+      // In this case, React will log a DEV warning about an update from an unmounted component.
+      // We can avoid triggering that warning with this check.
+      if (didUnsubscribe) {
+        return;
+      }
+
+      // We use a state updater function to avoid scheduling work for a stale source.
+      // However it's important to eagerly read the currently value,
+      // so that all scheduled work shares the same value (in the event of multiple subscriptions).
+      // This avoids visual "tearing" when a mutation happens during a (concurrent) render.
+      const value = getCurrentValue();
+
+      setState(prevState => {
+        // Ignore values from stale sources!
+        // Since we subscribe an unsubscribe in a passive effect,
+        // it's possible that this callback will be invoked for a stale (previous) subscription.
+        // This check avoids scheduling an update for that stale subscription.
+        if (
+          prevState.getCurrentValue !== getCurrentValue ||
+          prevState.subscribe !== subscribe
+        ) {
+          return prevState;
+        }
+
+        // Some subscriptions will auto-invoke the handler, even if the value hasn't changed.
+        // If the value hasn't changed, no update is needed.
+        // Return state as-is so React can bail out and avoid an unnecessary render.
+        if (prevState.value === value) {
+          return prevState;
+        }
+
+        return { ...prevState, value };
+      });
+    };
+    const unsubscribe = subscribe(checkForUpdates);
+
+    // Because we're subscribing in a passive effect,
+    // it's possible that an update has occurred between render and our effect handler.
+    // Check for this and schedule an update if work has occurred.
+    checkForUpdates();
+
+    return () => {
+      didUnsubscribe = true;
+      unsubscribe();
+    };
+  }, [getCurrentValue, subscribe]);
+
+  // Return the current value for our caller to use while rendering.
+  return valueToReturn;
+}
+```
+
+不妨对源码进行分析，首先关注
+
+```js
+const [state, setState] = useState(() => ({
+  getCurrentValue,
+  subscribe,
+  value: getCurrentValue()
+}));
+```
+
+这里把 `props` 转换成 `state` 来存储，这个相当于 class 中的 props 转成 state 是一样的。那为什么需要这么做呢？
+在 class 中把 props 同步成 state 的地方有三个声明周期的钩子可以做到，
+
+1. 一个是已经标记为 `unsafe` 的 `componentWillReceiveProps` 在接收到新的 props 的时候可以转换成 state,
+2. 另外是 `componentDidUpdate` 在每次更新的时候，可以对 `this.props` 和 `pre.props` 进行比较，然后在内部进行 `setState`
+3. 是一个静态方法即 `getDrivedStateFromProps` 在这个静态方法中返回相应的 state.
+
+这三个方法执行的顺序是不一样的。但是在函数组件中，淡化了生命周期的概念，那么如何模拟 `getDrivedStateFromProps` 或 `componentWillReceiveProps` 呢。
+如果需要模拟这两个生命周期的话，那么又想做优化，就需要比较上一次的值和下一次的值，上一次的值存储在哪里呢？此时就可以存储到 state 中，然后下一次 `render` 的时候，
+比较这一次的 props 和 state 如果不一样则重新 `setState`, 即下面这段代码
+
+```js
+if (
+  state.getCurrentValue !== getCurrentValue ||
+  state.subscribe !== subscribe
+) {
+  // If the subscription has been updated, we'll schedule another update with React.
+  // React will process this update immediately, so the old subscription value won't be committed.
+  // It is still nice to avoid returning a mismatched value though, so let's override the return value.
+  valueToReturn = getCurrentValue();
+
+  setState({
+    getCurrentValue,
+    subscribe,
+    value: valueToReturn
+  });
+}
+```
+
+通过上述代码，我们已经知道如何更新新的状态，那么在值发生变化的时候还需要执行状态的变更从而实现组件的 `re-render`，这段代码就是在 `useEffect` 中
+
+```js{24-26,46}
+useEffect(() => {
+  let didUnsubscribe = false;
+
+  const checkForUpdates = () => {
+    // It's possible that this callback will be invoked even after being unsubscribed,
+    // if it's removed as a result of a subscription event/update.
+    // In this case, React will log a DEV warning about an update from an unmounted component.
+    // We can avoid triggering that warning with this check.
+    if (didUnsubscribe) {
+      return;
+    }
+
+    // We use a state updater function to avoid scheduling work for a stale source.
+    // However it's important to eagerly read the currently value,
+    // so that all scheduled work shares the same value (in the event of multiple subscriptions).
+    // This avoids visual "tearing" when a mutation happens during a (concurrent) render.
+    const value = getCurrentValue();
+
+    setState(prevState => {
+      // Ignore values from stale sources!
+      // Since we subscribe an unsubscribe in a passive effect,
+      // it's possible that this callback will be invoked for a stale (previous) subscription.
+      // This check avoids scheduling an update for that stale subscription.
+      if (
+        prevState.getCurrentValue !== getCurrentValue ||
+        prevState.subscribe !== subscribe
+      ) {
+        return prevState;
+      }
+
+      // Some subscriptions will auto-invoke the handler, even if the value hasn't changed.
+      // If the value hasn't changed, no update is needed.
+      // Return state as-is so React can bail out and avoid an unnecessary render.
+      if (prevState.value === value) {
+        return prevState;
+      }
+
+      return { ...prevState, value };
+    });
+  };
+  const unsubscribe = subscribe(checkForUpdates);
+
+  // Because we're subscribing in a passive effect,
+  // it's possible that an update has occurred between render and our effect handler.
+  // Check for this and schedule an update if work has occurred.
+  checkForUpdates();
+
+  return () => {
+    didUnsubscribe = true;
+    unsubscribe();
+  };
+}, [getCurrentValue, subscribe]);
+```
+
+在 `useEffect` 中会进行值的比较来优化 `render`， 如果值不发生变化则不进行
+
+```js
+if (prevState.value === value) {
+  return prevState;
+}
+```
+
+并且在 `getCurrentValue` 和 `subscribe` 发生变化的时候则重新执行 `useEffect`, 总的来说源码非常简单，那么 `useSubscription` 的应用场景有哪些呢？
+这些在官网上都已经标记了出来。[点击查看](https://github.com/facebook/react/blob/master/packages/use-subscription/src/__tests__/useSubscription-test.internal.js)
+
+### 手动实现一个 useSubscription
+
+我们已经知道了 React 本身的 `useSubscription` 的事情，那么我们能否自己实现一个这样形式的订阅呢？首先 `useSubscription` 现在通常用于状态管理库中，类似的有 Redux 的 `useSelector`,
+目前其他的一些库也都实现了类似的效果。那么不妨就实现一个类似的也叫做 `useSelector`
+
+首先定义这个函数
+
+```js
+function useSelector() {
+  // do something
+}
+```
+
+先考虑一下 useSelector 需要做什么， `useSelector` 需要是在监听的值发生变化的时候渲染这个组件。通过渲染一个组件有多种方式，不妨写一个 hook 叫做 `useForceUpdate`
+
+```js
+function useForceUpdate() {
+  const [update, setUpdate] = useState(false);
+
+  const forceUpdate = () => setUpdate(!update);
+
+  return forceUpdate;
+}
+```
+
+有了 `forceUpdate` 后需要实现一个和 `useSubscription` 一个的优化效果，就是需要一个比较函数， 我们不像 `useSubscription` 那样直接暴露一个叫做 getCurrentValue 的方法，因为
+`useSelector` 是为了拿到 `store` 中的数据，只有在 store 中的数据发生变化的时候才会 `render`
+
+```js
+function compare(oldValue, newValue) {
+  // value 是一个数组
+  if (oldValue.length !== newValue.length) return false;
+  for (let i = 0; i < oldValue.length; i++) {
+    if (oldValue[i] !== newValue[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+```
+
+有了比较函数后就可以实现 `useSelector`, `useSelector` 需要监听器的值是用户传入的，通常用户需要监听器的值是存储在 store 中的值，所以我们可以给 `useSelector` 传递一个函数，
+函数的第一个参数就是我们的 `store`
+
+```js
+function useSelector(depFn) {
+  // 通过某个 context 获取到 sunscribers
+  const subscribers = useContext(xxx);
+  const forceUpdate = useForceUpdate();
+  const depFnRef = useRef(depFn);
+  depFnRef.current = depFn;
+  const depValueRef = useRef(depFn());
+
+  // 这里是 useEffect 中的 订阅函数
+  useEffect(() => {
+    // 订阅函数存储的是 store, 可以在 useSelector 内部使用 useContext() 来获取这个 store
+    function subscriber(store) {
+      const oldValue = depValueRef.current;
+      const newValue = depFnRef.current(store);
+      if (!compare(oldValue, newValue)) {
+        // 如果不相等则强制更新
+        forceUpdate();
+        depValueRef.current = newValue;
+      }
+    }
+    subscribers.register(subscriber);
+
+    return () => {
+      subscribers.unregister(subscriber);
+    };
+  }, []);
+}
+```
+
+那么 `subscribers` 是什么样子的呢？`subscribers` 需要有 `register` 和 `unregister` 方法
+
+```js
+function useSubscriber(store) {
+  const subscribersRef = useRef(new Set());
+
+  const register = subscriber => {
+    subscribersRef.current.set(subscriber);
+  };
+
+  const unregister = subscriber => {
+    if (subscribersRef.current.get(subscriber)) {
+      subscribersRef.current.delete(subscriber);
+    }
+  };
+
+  const notify = () => {
+    for (const subscriber of subscribersRef.current) {
+      subscriber(store);
+    }
+  };
+
+  return { register, unregister };
+}
+```
+
+这就是一个 `useSubscriber`, 内部实现了注册和取消注册的功能。那么这个 `useSubscriber` 为什么还有一个 `notify` 功能呢？ `notify` 的作用就是执行每一个
+监听器就是 `Redux` 中的 `listener()` 是一样的。所以这里可以看做的 `listener()`。
+
+这基本上就是一个很基础的 `useSelector` 因为为了简便所以依赖于状态管理的一些参数，如果要实现任意值的监听。那么使用 React 本身的 `useSubscription` 即可。目前可以用于
+事件的监听等等。这个对于非受控的表单作用会有很大很大。
