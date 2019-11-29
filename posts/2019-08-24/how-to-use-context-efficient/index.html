@@ -1,0 +1,634 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="shortcut icon" href="/fa.jpg"/><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"/><meta name="theme-color" content="#000000"/><link rel="manifest" href="/manifest.json"/>
+    <title>How to use context efficient</title>
+    <link rel="canonical" href="/posts/2019-08-24/how-to-use-context-efficient" />
+    <link rel="stylesheet" href="/static/css/1.27c8494b.chunk.css" />
+  <link href="/static/css/main.0e6724e3.chunk.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"><div class="BlogLayout_container__1wjbv"><div class="
+        LoadingIndicator_LoadingIndicator__LXZCC
+        
+        undefined
+      "></div><header><h3 class="BlogLayout_title__U0zfd"><a class=" " href="/">lanyincao</a></h3></header><main><article><header class="BlogPostLayout_header__6lPZ1"><h1 class="BlogPostLayout_title__1egAZ"><a class=" " href="/posts/2019-08-24/how-to-use-context-efficient/">How to use context efficient</a></h1><small><time dateTime="Fri, 23 Aug 2019 16:00:00 GMT">August 24, 2019</time> <!-- -->•<!-- --> <ul class="ArticleMeta_tags__30Wbg"><li><a class=" " href="/tags/react/">react</a></li><li><a class=" " href="/tags/context/">context</a></li><li><a class=" " href="/tags/efficient/">efficient</a></li></ul> <!-- -->•<!-- --> <span>☕️☕️<!-- --> <!-- -->10<!-- --> min read</span></small></header><div class="BlogPostLayout_content__1CRXP"><p>如何高效的使用 <code>context</code>, <a class=" " href="https://lanyincao.netlify.com/posts/2019-08-19/form/">上一篇文章</a> 详细的讲述了如何写一个 <code>Form</code>, 以及如何改造 <code>Form</code> 的性能。那么是否同样的
+写法也可以运用于普通组件呢？</p><h1 id="回顾-context">回顾 context</h1><p><a class=" " href="https://lanyincao.netlify.com/posts/2019-08-10/context/">在 context 文章中</a>讲了具体的用法, 同时也讲了 <code>Hook</code> 中和 <code>Class</code> 中使用 <code>Context</code> 的区别。同时也说过在使用 <code>Context</code> 的
+一些问题。这样的问题该如何去解决呢？在 <code>Form</code> 中的方案是否可以复用到其他普通的组件中呢？</p><h1 id="react-redux">react-redux</h1><p><a class=" " href="https://github.com/reduxjs/react-redux">react-redux</a> 是由 <a class=" " href="https://github.com/reduxjs/redux">redux</a> 延伸出来的，用于 react 中的状态管理库，状态管理在 <code>2018</code> 年是非常非常的火，同时
+也延伸出了一大批状态管理的库比如 <a class=" " href="https://github.com/mobxjs/mobx">mobx</a>, <a class=" " href="https://github.com/dvajs/dva">dva</a> 等等都是非常优秀的库。<code>react-redux</code> 在很多项目中都使用了这个库。那么这个库是否存在同样的
+问题呢？不妨用一个简单的 demo 来看一下。</p><p><code>react-redux-demo</code></p><p>从 <code>console.log</code> 中可以看出在修改 count 的时候只有 <code>Count</code> 组件更新，在修改 <code>person</code> 的时候只有 <code>Person</code> 组件更新。因为无论是 <code>Count</code> 还是 <code>Person</code>，
+都在自己所需要的 <code>props</code> 发生变化的时候才会更新。这个是符合 <code>React</code> 的正常的数据流的，组件的 <code>props</code> 变化会让组件发生更新。</p><p>那么是否 <code>connect</code> 每次都会执行呢？<code>connect</code> 是一个 <code>HOC</code>, 会返回新的组件，那不妨在 <code>mapStateToProps</code> 中加入 <code>console.log</code></p><p><code>mapCountStateToProps</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">mapCountStateToProps</span><span class="token punctuation">(</span><span class="token parameter">state</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'mapCountStateToProps'</span><span class="token punctuation">,</span> state<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> <span class="token punctuation">{</span> count <span class="token punctuation">}</span> <span class="token operator">=</span> state<span class="token punctuation">;</span>
+  <span class="token keyword">return</span> <span class="token punctuation">{</span> count <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>mapPersonStateToProps</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">mapPersonStateToProps</span><span class="token punctuation">(</span><span class="token parameter">state</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'mapPersonStateToProps'</span><span class="token punctuation">,</span> state<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> <span class="token punctuation">{</span> name<span class="token punctuation">,</span> address <span class="token punctuation">}</span> <span class="token operator">=</span> state<span class="token punctuation">;</span>
+  <span class="token keyword">return</span> <span class="token punctuation">{</span> name<span class="token punctuation">,</span> address <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>Count</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">class</span> <span class="token class-name">Count</span> <span class="token keyword">extends</span> <span class="token class-name">React<span class="token punctuation">.</span>Component</span><span class="token operator">&lt;</span>any<span class="token punctuation">,</span> any<span class="token operator">></span> <span class="token punctuation">{</span>
+  <span class="token function">render</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> <span class="token punctuation">{</span> dispatch <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">.</span>props<span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'render count'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token punctuation">(</span>
+      <span class="token operator">&lt;</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>div<span class="token operator">></span>count<span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token keyword">this</span><span class="token punctuation">.</span>props<span class="token punctuation">.</span>count<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>button onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'increase'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token number">2</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">></span>
+          increase
+        <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+        <span class="token operator">&lt;</span>button onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'decrease'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token number">2</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">></span>
+          decrease
+        <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+    <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>Person</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">class</span> <span class="token class-name">Person</span> <span class="token keyword">extends</span> <span class="token class-name">React<span class="token punctuation">.</span>Component</span><span class="token operator">&lt;</span>any<span class="token operator">></span> <span class="token punctuation">{</span>
+  <span class="token function">render</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> <span class="token punctuation">{</span> dispatch<span class="token punctuation">,</span> name<span class="token punctuation">,</span> address <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">.</span>props<span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'render person'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token punctuation">(</span>
+      <span class="token operator">&lt;</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>div<span class="token operator">></span>
+          <span class="token operator">&lt;</span>span<span class="token operator">></span>name<span class="token punctuation">:</span> <span class="token punctuation">{</span>name<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">></span>
+          <span class="token operator">&lt;</span>span style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">{</span> marginLeft<span class="token punctuation">:</span> <span class="token number">20</span> <span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token operator">></span>address<span class="token punctuation">:</span> <span class="token punctuation">{</span>address<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">></span>
+        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>div<span class="token operator">></span>
+          <span class="token operator">&lt;</span>button
+            onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'updateName'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token string">'牧云云'</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+          <span class="token operator">></span>
+            updateName
+          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+          <span class="token operator">&lt;</span>button
+            onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span>
+              <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'updateAddress'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token string">'hangzhou'</span> <span class="token punctuation">}</span><span class="token punctuation">)</span>
+            <span class="token punctuation">}</span>
+          <span class="token operator">></span>
+            updateAddress
+          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+    <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p>点击 <code>increase</code> 或者 <code>decrease</code> 按钮，看一下控制台</p><p><img src="https://user-images.githubusercontent.com/17973020/63645933-381e0480-c73b-11e9-891b-f4bf7ba23a84.jpg" alt="context1"/></p><p>仔细观察下发现 <code>render count</code> 是正常的渲染，因为点击了 <code>increase</code> 或者 <code>decrease</code>, 但是 <code>mapCountStateToProps</code> 以及
+<code>mapPersonStateToProps</code> 每次都会被输出，即使只更新了 <code>count</code> 组件的 <code>props</code>, 其实这个大家不同太过于关心，我之前在 <code>twitter</code> 上
+问过 <code>Dan</code>, 关于渲染次数的问题， <code>Dan</code> 的回答就是不要太过在意 <code>render</code> 次数这是内部的实现细节了。那这个地方会有影响吗？</p><p><code>connect</code> 只是一个普通的高阶组件，不妨看一下 <code>connect</code> 的源码</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">export</span> <span class="token keyword">function</span> <span class="token function">createConnect</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>
+  connectHOC <span class="token operator">=</span> connectAdvanced<span class="token punctuation">,</span>
+  mapStateToPropsFactories <span class="token operator">=</span> defaultMapStateToPropsFactories<span class="token punctuation">,</span>
+  mapDispatchToPropsFactories <span class="token operator">=</span> defaultMapDispatchToPropsFactories<span class="token punctuation">,</span>
+  mergePropsFactories <span class="token operator">=</span> defaultMergePropsFactories<span class="token punctuation">,</span>
+  selectorFactory <span class="token operator">=</span> defaultSelectorFactory
+<span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">return</span> <span class="token keyword">function</span> <span class="token function">connect</span><span class="token punctuation">(</span>
+    <span class="token parameter">mapStateToProps<span class="token punctuation">,</span>
+    mapDispatchToProps<span class="token punctuation">,</span>
+    mergeProps<span class="token punctuation">,</span>
+    <span class="token punctuation">{</span>
+      pure <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">,</span>
+      areStatesEqual <span class="token operator">=</span> strictEqual<span class="token punctuation">,</span>
+      areOwnPropsEqual <span class="token operator">=</span> shallowEqual<span class="token punctuation">,</span>
+      areStatePropsEqual <span class="token operator">=</span> shallowEqual<span class="token punctuation">,</span>
+      areMergedPropsEqual <span class="token operator">=</span> shallowEqual<span class="token punctuation">,</span>
+      <span class="token operator">...</span>extraOptions
+    <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token punctuation">}</span></span>
+  <span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> initMapStateToProps <span class="token operator">=</span> <span class="token function">match</span><span class="token punctuation">(</span>
+      mapStateToProps<span class="token punctuation">,</span>
+      mapStateToPropsFactories<span class="token punctuation">,</span>
+      <span class="token string">'mapStateToProps'</span>
+    <span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">const</span> initMapDispatchToProps <span class="token operator">=</span> <span class="token function">match</span><span class="token punctuation">(</span>
+      mapDispatchToProps<span class="token punctuation">,</span>
+      mapDispatchToPropsFactories<span class="token punctuation">,</span>
+      <span class="token string">'mapDispatchToProps'</span>
+    <span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">const</span> initMergeProps <span class="token operator">=</span> <span class="token function">match</span><span class="token punctuation">(</span>mergeProps<span class="token punctuation">,</span> mergePropsFactories<span class="token punctuation">,</span> <span class="token string">'mergeProps'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token keyword">return</span> <span class="token function">connectHOC</span><span class="token punctuation">(</span>selectorFactory<span class="token punctuation">,</span> <span class="token punctuation">{</span>
+      <span class="token comment">// used in error messages</span>
+      methodName<span class="token punctuation">:</span> <span class="token string">'connect'</span><span class="token punctuation">,</span>
+
+      <span class="token comment">// used to compute Connect's displayName from the wrapped component's displayName.</span>
+      <span class="token function-variable function">getDisplayName</span><span class="token punctuation">:</span> <span class="token parameter">name</span> <span class="token operator">=></span> <span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">Connect(</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>name<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">)</span><span class="token template-punctuation string">`</span></span><span class="token punctuation">,</span>
+
+      <span class="token comment">// if mapStateToProps is falsy, the Connect component doesn't subscribe to store state changes</span>
+      shouldHandleStateChanges<span class="token punctuation">:</span> <span class="token function">Boolean</span><span class="token punctuation">(</span>mapStateToProps<span class="token punctuation">)</span><span class="token punctuation">,</span>
+
+      <span class="token comment">// passed through to selectorFactory</span>
+      initMapStateToProps<span class="token punctuation">,</span>
+      initMapDispatchToProps<span class="token punctuation">,</span>
+      initMergeProps<span class="token punctuation">,</span>
+      pure<span class="token punctuation">,</span>
+      areStatesEqual<span class="token punctuation">,</span>
+      areOwnPropsEqual<span class="token punctuation">,</span>
+      areStatePropsEqual<span class="token punctuation">,</span>
+      areMergedPropsEqual<span class="token punctuation">,</span>
+
+      <span class="token comment">// any extra options args can override defaults of connect or connectAdvanced</span>
+      <span class="token operator">...</span>extraOptions
+    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>connect</code> 本身不会有一些复杂的计算，所以即使每次都执行是没有影响的。</p><p><code>有可能你特别在意 render 的次数，可能就是不想 connect 每次都要执行，就是有这样的强迫症，那么应该如何去修改这个呢？</code></p><hr/><h1 id="从零实现一个状态管理">从零实现一个状态管理</h1><p>在开始这个部分之前，首先要比较熟悉 <code>redux</code>, 因为这部分很多代码都是继续沿用 <code>redux</code> 中的代码。</p><p>一步一步的来，首先对于状态管理，应该需要一个 <code>Provider</code>, 不妨来实现这个 <code>Provider</code>, Provider 还是使用 <code>React</code> 的 <code>context api</code>,
+这个实现是使用了 <code>TS</code>, 如果对 <code>TS</code> 不熟悉的可以查看<a class=" " href="https://www.typescriptlang.org/">官网</a></p><p><code>Provider</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">import</span> <span class="token operator">*</span> <span class="token keyword">as</span> React <span class="token keyword">from</span> <span class="token string">'react'</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> storeContext<span class="token punctuation">,</span> selectorContext <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'./context'</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> ProviderProps <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'./type'</span><span class="token punctuation">;</span>
+
+<span class="token keyword">const</span> <span class="token punctuation">{</span> useState <span class="token punctuation">}</span> <span class="token operator">=</span> React<span class="token punctuation">;</span>
+
+<span class="token keyword">export</span> <span class="token keyword">default</span> <span class="token keyword">function</span> Provider<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span><span class="token punctuation">(</span><span class="token punctuation">{</span> value<span class="token punctuation">,</span> children <span class="token punctuation">}</span><span class="token punctuation">:</span> ProviderProps<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// 缓存 value 的值进行局部更新</span>
+  <span class="token keyword">const</span> <span class="token punctuation">[</span>api<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token function">useState</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">return</span> <span class="token punctuation">(</span>
+    <span class="token operator">&lt;</span>storeContext<span class="token punctuation">.</span>Provider value<span class="token operator">=</span><span class="token punctuation">{</span>value<span class="token punctuation">}</span><span class="token operator">></span>
+      <span class="token operator">&lt;</span>selectorContext<span class="token punctuation">.</span>Provider value<span class="token operator">=</span><span class="token punctuation">{</span>api<span class="token punctuation">}</span><span class="token operator">></span>
+        <span class="token punctuation">{</span>children<span class="token punctuation">}</span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>selectorContext<span class="token punctuation">.</span>Provider<span class="token operator">></span>
+    <span class="token operator">&lt;</span><span class="token operator">/</span>storeContext<span class="token punctuation">.</span>Provider<span class="token operator">></span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>在 <code>Provider</code> 中使用了两个 <code>context</code>, 为什么要使用两个一模一样的呢？后面会详细解释, 在看一下 <code>context</code> 的声明</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">import</span> <span class="token operator">*</span> <span class="token keyword">as</span> React <span class="token keyword">from</span> <span class="token string">'react'</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> UseStoreResult <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'./type'</span>
+
+<span class="token keyword">export</span> <span class="token keyword">const</span> storeContext <span class="token operator">=</span> React<span class="token punctuation">.</span>createContext<span class="token operator">&lt;</span>UseStoreResult<span class="token operator">&lt;</span>any<span class="token operator">></span> <span class="token operator">|</span> <span class="token keyword">undefined</span><span class="token operator">></span><span class="token punctuation">(</span><span class="token keyword">undefined</span><span class="token punctuation">)</span>
+
+<span class="token comment">/**
+ * selectorContext 用户获取值并且可以和 dispatch 相应的值 这个可以进行缓存所以真正存储只的地方是 storeContext
+ */</span>
+<span class="token keyword">export</span> <span class="token keyword">const</span> selectorContext <span class="token operator">=</span> React<span class="token punctuation">.</span>createContext<span class="token operator">&lt;</span>UseStoreResult<span class="token operator">&lt;</span>any<span class="token operator">></span> <span class="token operator">|</span> <span class="token keyword">undefined</span><span class="token operator">></span><span class="token punctuation">(</span><span class="token keyword">undefined</span><span class="token punctuation">)</span>
+</code></pre><p>这些类型的地方为了方便快速直接用 <code>any</code> 来代替, 可以看出，在 <code>context</code> 中声明了两个 <code>context</code>, 在 <code>Provider</code> 中使用了
+这两个 <code>context</code>。</p><p>因为整个部分都是采用 <code>Hooks</code> 的方式来开发的，所以不再命名为 <code>createStore</code> 所以采用 <code>useStore</code>。</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">export</span> <span class="token keyword">default</span> <span class="token keyword">function</span> useStore<span class="token operator">&lt;</span><span class="token constant">T</span> <span class="token keyword">extends</span> <span class="token class-name">object</span><span class="token operator">></span><span class="token punctuation">(</span>
+  reducer<span class="token punctuation">:</span> ReducerType<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span><span class="token punctuation">,</span>
+  initialState<span class="token operator">?</span><span class="token punctuation">:</span> <span class="token constant">T</span><span class="token punctuation">,</span>
+  enhancer<span class="token operator">?</span><span class="token punctuation">:</span> any
+<span class="token punctuation">)</span><span class="token punctuation">:</span> UseStoreResult<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> <span class="token punctuation">[</span><span class="token keyword">get</span><span class="token punctuation">,</span> <span class="token keyword">set</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token function">useCurrent</span><span class="token punctuation">(</span>initialState <span class="token operator">||</span> <span class="token punctuation">{</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+  <span class="token keyword">const</span> listeners <span class="token operator">=</span> useRef<span class="token operator">&lt;</span>Listener<span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token operator">></span><span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+
+  <span class="token comment">// 继续使用 redux 中的中间件</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>
+    <span class="token punctuation">(</span><span class="token keyword">typeof</span> initialState <span class="token operator">===</span> <span class="token string">'function'</span> <span class="token operator">&amp;&amp;</span> <span class="token keyword">typeof</span> enhancer <span class="token operator">===</span> <span class="token string">'function'</span><span class="token punctuation">)</span> <span class="token operator">||</span>
+    <span class="token punctuation">(</span><span class="token keyword">typeof</span> enhancer <span class="token operator">===</span> <span class="token string">'function'</span> <span class="token operator">&amp;&amp;</span> <span class="token keyword">typeof</span> arguments<span class="token punctuation">[</span><span class="token number">3</span><span class="token punctuation">]</span> <span class="token operator">===</span> <span class="token string">'function'</span><span class="token punctuation">)</span>
+  <span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span>
+      <span class="token string">'It looks like you are passing several store enhancers to '</span> <span class="token operator">+</span>
+        <span class="token string">'useStore(). This is not supported. Instead, compose them '</span> <span class="token operator">+</span>
+        <span class="token string">'together to a single function.'</span>
+    <span class="token punctuation">)</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">typeof</span> initialState <span class="token operator">===</span> <span class="token string">'function'</span> <span class="token operator">&amp;&amp;</span> <span class="token keyword">typeof</span> enhancer <span class="token operator">===</span> <span class="token string">'undefined'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    enhancer <span class="token operator">=</span> initialState
+    initialState <span class="token operator">=</span> <span class="token keyword">undefined</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">typeof</span> enhancer <span class="token operator">!==</span> <span class="token string">'undefined'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">typeof</span> enhancer <span class="token operator">!==</span> <span class="token string">'function'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span><span class="token string">'Expected the enhancer to be a function.'</span><span class="token punctuation">)</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token keyword">return</span> <span class="token function">enhancer</span><span class="token punctuation">(</span>useStore<span class="token punctuation">)</span><span class="token punctuation">(</span>reducer<span class="token punctuation">,</span> initialState<span class="token punctuation">)</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">/**
+   * 返回 store 存的所有的 state
+   */</span>
+  <span class="token keyword">const</span> <span class="token function-variable function">getState</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token keyword">get</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">as</span> <span class="token constant">T</span>
+
+  <span class="token comment">/**
+   * 监听器用于更新子组件
+   * @param listener
+   */</span>
+  <span class="token keyword">const</span> <span class="token function-variable function">subscriber</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">listener<span class="token punctuation">:</span> Listener</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">typeof</span> listener <span class="token operator">!==</span> <span class="token string">'object'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span><span class="token string">'expected listener to be a object'</span><span class="token punctuation">)</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token comment">// 加入到监听器中</span>
+    listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span>listener<span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      <span class="token keyword">const</span> index <span class="token operator">=</span> listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">indexOf</span><span class="token punctuation">(</span>listener<span class="token punctuation">)</span>
+      listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">splice</span><span class="token punctuation">(</span>index<span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">/**
+   * 用于修改值, 用于中间件的时候可以不传第二个值，但是在 selector 中仍然需要
+   * @param action
+   * @param deps 可能不存在，如果不存在则全部更新
+   */</span>
+  <span class="token keyword">const</span> <span class="token function-variable function">dispatch</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">action<span class="token punctuation">:</span> Action<span class="token punctuation">,</span> deps<span class="token operator">?</span><span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span></span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> oldState <span class="token operator">=</span> <span class="token keyword">get</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token comment">// 获取到执行后的 state</span>
+    <span class="token keyword">const</span> state <span class="token operator">=</span> <span class="token function">reducer</span><span class="token punctuation">(</span>oldState <span class="token keyword">as</span> <span class="token constant">T</span><span class="token punctuation">,</span> action<span class="token punctuation">)</span>
+    <span class="token keyword">set</span><span class="token punctuation">(</span>state<span class="token punctuation">)</span>
+
+    <span class="token keyword">const</span> changeKeys<span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+    <span class="token comment">// 进行浅比较获取到修改的值</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>deps<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      deps<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token parameter">key</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+        <span class="token keyword">const</span> oldValue <span class="token operator">=</span> <span class="token function">getPath</span><span class="token punctuation">(</span>oldState<span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+        <span class="token keyword">const</span> newValue <span class="token operator">=</span> <span class="token function">getPath</span><span class="token punctuation">(</span>state<span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>oldValue <span class="token operator">!==</span> newValue<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+          changeKeys<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+        <span class="token punctuation">}</span>
+      <span class="token punctuation">}</span><span class="token punctuation">)</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token comment">// 遍历监听器，只对变化的组件进行更新</span>
+    listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token parameter">listener</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      <span class="token keyword">const</span> listenerProps <span class="token operator">=</span> listener<span class="token punctuation">.</span>props
+      <span class="token comment">// 如果依赖存在则更新依赖中的选项，如果不存在则更新全部</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span>deps<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token comment">// 遍历监听器，对修改的部分进行更新</span>
+        <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">let</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> changeKeys<span class="token punctuation">.</span>length<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+          <span class="token keyword">if</span> <span class="token punctuation">(</span>listenerProps<span class="token punctuation">.</span><span class="token function">indexOf</span><span class="token punctuation">(</span>changeKeys<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">></span> <span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+            listener<span class="token punctuation">.</span><span class="token function">listener</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+          <span class="token punctuation">}</span>
+        <span class="token punctuation">}</span>
+      <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token punctuation">{</span>
+        listener<span class="token punctuation">.</span><span class="token function">listener</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+      <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">return</span> action
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">return</span> <span class="token punctuation">{</span>
+    getState<span class="token punctuation">:</span> getState<span class="token punctuation">,</span>
+    subscriber<span class="token punctuation">:</span> subscriber<span class="token punctuation">,</span>
+    dispatch<span class="token punctuation">:</span> dispatch
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>useStore</code> 前面的部分和 <code>redux</code> 中的代码完全一样，所以这个地方暂时可以不看, <code>subscriber</code> 部分也基本没有什么变化，但是
+还是要看一下 <code>listener</code> 的参数是什么样子的。</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">const</span> <span class="token function-variable function">subscriber</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">listener<span class="token punctuation">:</span> Listener</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">typeof</span> listener <span class="token operator">!==</span> <span class="token string">'object'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span><span class="token string">'expected listener to be a object'</span><span class="token punctuation">)</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">// 加入到监听器中</span>
+  listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span>listener<span class="token punctuation">)</span>
+
+  <span class="token keyword">return</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> index <span class="token operator">=</span> listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">indexOf</span><span class="token punctuation">(</span>listener<span class="token punctuation">)</span>
+    listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">splice</span><span class="token punctuation">(</span>index<span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">export</span> <span class="token keyword">interface</span> <span class="token class-name">Listener</span> <span class="token punctuation">{</span>
+  <span class="token function-variable function">listener</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> any
+  props<span class="token punctuation">:</span> any<span class="token punctuation">[</span><span class="token punctuation">]</span>
+<span class="token punctuation">}</span>
+</code></pre><p>可以看定义的接口，<code>subscriber</code> 的参数是一个对象，对象中包括 <code>listener</code> 函数和一个 <code>props</code>, 具体用法这两个是干什么用的, 后面会讲到</p><p>在看 <code>dispatch</code> 这个函数， <code>dispatch</code> 是主体的部分， <code>dispatch</code> 接受了两个参数，第一个参数是 <code>action</code> 第二个参数是一个 <code>deps</code> 依赖数组
+那么这里为什么需要这样的一个依赖项呢？在看下 <code>useSelector</code></p><p><code>useSelector</code> 是最最最主要的部分，也是最关键的部分，在业务代码中，只需要使用 <code>useSelector</code> 就能实现<code>局部渲染</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">export</span> <span class="token keyword">default</span> <span class="token keyword">function</span> useSelector<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span><span class="token punctuation">(</span>
+  <span class="token function-variable function">callback</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token parameter">state<span class="token punctuation">:</span> <span class="token constant">T</span></span><span class="token punctuation">)</span> <span class="token operator">=></span> any<span class="token punctuation">[</span><span class="token punctuation">]</span>
+<span class="token punctuation">)</span><span class="token punctuation">:</span> UseSelectorResult<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> api <span class="token operator">=</span> <span class="token function">useContext</span><span class="token punctuation">(</span>selectorContext<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> forceUpdate <span class="token operator">=</span> <span class="token function">useForceUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>api<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span><span class="token string">'expected useSelector to be used in Provider'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">const</span> propsRef <span class="token operator">=</span> React<span class="token punctuation">.</span><span class="token function">useRef</span><span class="token punctuation">(</span><span class="token function">callback</span><span class="token punctuation">(</span>api<span class="token punctuation">.</span><span class="token function">getState</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token comment">// 获取到返回的 props</span>
+  <span class="token keyword">const</span> props <span class="token operator">=</span> <span class="token function">callback</span><span class="token punctuation">(</span>api<span class="token punctuation">.</span><span class="token function">getState</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token function">isSame</span><span class="token punctuation">(</span>propsRef<span class="token punctuation">.</span>current<span class="token punctuation">,</span> props<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    propsRef<span class="token punctuation">.</span>current <span class="token operator">=</span> props<span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">const</span> current <span class="token operator">=</span> propsRef<span class="token punctuation">.</span>current<span class="token punctuation">;</span>
+
+  <span class="token function">useEffect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token comment">// 订阅需要的信息</span>
+    api<span class="token punctuation">.</span><span class="token function">subscriber</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+      <span class="token function-variable function">listener</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">forceUpdate</span><span class="token punctuation">(</span><span class="token boolean">false</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+      props<span class="token punctuation">:</span> current
+    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">[</span>api<span class="token punctuation">,</span> forceUpdate<span class="token punctuation">,</span> current<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">return</span> <span class="token punctuation">{</span>
+    <span class="token function-variable function">dispatch</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token parameter">action<span class="token punctuation">:</span> Action</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      api<span class="token punctuation">.</span><span class="token function">dispatch</span><span class="token punctuation">(</span>action<span class="token punctuation">,</span> props<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">return</span> action<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    getState<span class="token punctuation">:</span> api<span class="token punctuation">.</span>getState
+  <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>useSelector</code> 使用了 <code>selectorContext</code>，而不是 <code>storeContext</code>, 为什么？因为只要 <code>store</code> 发生变化，那么 <code>storeContext</code> 必然会
+重新 <code>render</code>, <code>storeContext</code> 重新 <code>render</code>, 使用 <code>storeContext</code> 的地方都会重新 <code>render</code>, 那么为什么 <code>selectorContext</code> 不会呢？
+在会有看下 <code>Provider</code> 的代码</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">export</span> <span class="token keyword">default</span> <span class="token keyword">function</span> Provider<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span><span class="token punctuation">(</span><span class="token punctuation">{</span> value<span class="token punctuation">,</span> children <span class="token punctuation">}</span><span class="token punctuation">:</span> ProviderProps<span class="token operator">&lt;</span><span class="token constant">T</span><span class="token operator">></span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// 缓存 value 的值进行局部更新</span>
+<span class="token operator">></span>  <span class="token keyword">const</span> <span class="token punctuation">[</span>api<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token function">useState</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span> 🤔
+
+  <span class="token keyword">return</span> <span class="token punctuation">(</span>
+    <span class="token operator">&lt;</span>storeContext<span class="token punctuation">.</span>Provider value<span class="token operator">=</span><span class="token punctuation">{</span>value<span class="token punctuation">}</span><span class="token operator">></span>
+      <span class="token operator">&lt;</span>selectorContext<span class="token punctuation">.</span>Provider value<span class="token operator">=</span><span class="token punctuation">{</span>api<span class="token punctuation">}</span><span class="token operator">></span>
+        <span class="token punctuation">{</span>children<span class="token punctuation">}</span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>selectorContext<span class="token punctuation">.</span>Provider<span class="token operator">></span>
+    <span class="token operator">&lt;</span><span class="token operator">/</span>storeContext<span class="token punctuation">.</span>Provider<span class="token operator">></span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>箭头所指的这个部分就是关键所在 <code>const [api] = useState(value)</code> 通过这样，把 <code>value</code> 进行缓存了，这样即使每次 <code>render</code>,
+此时的 <code>api</code> 都是相同的。也就不会造成使用 <code>selectorContext</code> 的地方的就会更新。</p><p>那么如果 <code>useSelector</code> 不更新那在业务代码中使用 <code>useSelector()</code> 不也不更新了吗？这样就会造成 bug 的产生，这是万万不允许的。
+所以在 <code>useSelector</code> 内部使用了 <code>useForceUpdate</code>。</p><p><code>useForceUpdate</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">forceReducer</span><span class="token punctuation">(</span><span class="token parameter">state<span class="token punctuation">:</span> boolean</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">return</span> <span class="token operator">!</span>state<span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment">/**
+ * forceUpdate
+ */</span>
+<span class="token keyword">export</span> <span class="token keyword">function</span> <span class="token function">useForceUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">return</span> React<span class="token punctuation">.</span><span class="token function">useReducer</span><span class="token punctuation">(</span>forceReducer<span class="token punctuation">,</span> <span class="token boolean">false</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token number">1</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>现在可以看到在 <code>useSelector</code> 内部的 <code>useEffect</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">const</span> propsRef <span class="token operator">=</span> React<span class="token punctuation">.</span><span class="token function">useRef</span><span class="token punctuation">(</span><span class="token function">callback</span><span class="token punctuation">(</span>api<span class="token punctuation">.</span><span class="token function">getState</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 获取到返回的 props</span>
+<span class="token keyword">const</span> props <span class="token operator">=</span> <span class="token function">callback</span><span class="token punctuation">(</span>api<span class="token punctuation">.</span><span class="token function">getState</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token function">isSame</span><span class="token punctuation">(</span>propsRef<span class="token punctuation">.</span>current<span class="token punctuation">,</span> props<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  propsRef<span class="token punctuation">.</span>current <span class="token operator">=</span> props<span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">const</span> current <span class="token operator">=</span> propsRef<span class="token punctuation">.</span>current<span class="token punctuation">;</span>
+
+<span class="token function">useEffect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token comment">// 订阅需要的信息</span>
+  api<span class="token punctuation">.</span><span class="token function">subscriber</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+    <span class="token function-variable function">listener</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">forceUpdate</span><span class="token punctuation">(</span><span class="token boolean">false</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    props<span class="token punctuation">:</span> current
+  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">[</span>api<span class="token punctuation">,</span> forceUpdate<span class="token punctuation">,</span> current<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre><p>只有在 <code>current</code> 变化的时候会再一次重新注册 <code>listener</code>, 这个 <code>current</code> 通过调用 <code>callback(api.getState())</code> 所得，
+也就是只有在 <code>useSelector</code> 的依赖发生变化的时候才会重新注册。在业务里可以这样使用 <code>useSelector(() =&gt; [&#x27;a&#x27;, &#x27;b&#x27;])</code> 这里的
+<code>a</code> 和 <code>b</code> 都是使用 <code>useSelector</code> 组件里需要使用到的值。把使用的值作为依赖，只要使用的值发生改变的时候，才会进行 <code>render</code>。</p><p>在看下 <code>useSelector</code> 的返回值</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">return</span> <span class="token punctuation">{</span>
+  <span class="token function-variable function">dispatch</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token parameter">action<span class="token punctuation">:</span> Action</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    api<span class="token punctuation">.</span><span class="token function">dispatch</span><span class="token punctuation">(</span>action<span class="token punctuation">,</span> props<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> action<span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span>
+  getState<span class="token punctuation">:</span> api<span class="token punctuation">.</span>getState
+<span class="token punctuation">}</span><span class="token punctuation">;</span>
+</code></pre><p>此时的返回值接管了 <code>store</code> 中的 <code>dispatch</code> 函数, dispatch 的第二个参数也是 <code>useSelector</code> 的依赖项，所以在每次执行 <code>dispatch</code> 的时候都会
+执行 <code>selector</code> 的 <code>dispatch</code>， 然后调用 <code>store</code> 中的 <code>dispatch</code> 。在回头看下 <code>store</code> 中的 <code>dispatch</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token comment">/**
+ * 用于修改值, 用于中间件的时候可以不传第二个值，但是在 selector 中仍然需要
+ * @param action
+ * @param deps 可能不存在，如果不存在则全部更新
+ */</span>
+<span class="token keyword">const</span> <span class="token function-variable function">dispatch</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">action<span class="token punctuation">:</span> Action<span class="token punctuation">,</span> deps<span class="token operator">?</span><span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span></span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> oldState <span class="token operator">=</span> <span class="token keyword">get</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+  <span class="token comment">// 获取到执行后的 state</span>
+  <span class="token keyword">const</span> state <span class="token operator">=</span> <span class="token function">reducer</span><span class="token punctuation">(</span>oldState <span class="token keyword">as</span> <span class="token constant">T</span><span class="token punctuation">,</span> action<span class="token punctuation">)</span>
+  <span class="token keyword">set</span><span class="token punctuation">(</span>state<span class="token punctuation">)</span>
+
+  <span class="token keyword">const</span> changeKeys<span class="token punctuation">:</span> string<span class="token punctuation">[</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+
+  <span class="token comment">// 进行浅比较获取到修改的值</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>deps<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    deps<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token parameter">key</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      <span class="token keyword">const</span> oldValue <span class="token operator">=</span> <span class="token function">getPath</span><span class="token punctuation">(</span>oldState<span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+      <span class="token keyword">const</span> newValue <span class="token operator">=</span> <span class="token function">getPath</span><span class="token punctuation">(</span>state<span class="token punctuation">,</span> key<span class="token punctuation">)</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span>oldValue <span class="token operator">!==</span> newValue<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        changeKeys<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span>
+      <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span><span class="token punctuation">)</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token comment">// 遍历监听器，只对变化的组件进行更新</span>
+  listeners<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token parameter">listener</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> listenerProps <span class="token operator">=</span> listener<span class="token punctuation">.</span>props
+    <span class="token comment">// 如果依赖存在则更新依赖中的选项，如果不存在则更新全部</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>deps<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token comment">// 遍历监听器，对修改的部分进行更新</span>
+      <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">let</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> changeKeys<span class="token punctuation">.</span>length<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>listenerProps<span class="token punctuation">.</span><span class="token function">indexOf</span><span class="token punctuation">(</span>changeKeys<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">></span> <span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+          listener<span class="token punctuation">.</span><span class="token function">listener</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token punctuation">}</span>
+      <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token punctuation">{</span>
+      listener<span class="token punctuation">.</span><span class="token function">listener</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+  <span class="token keyword">return</span> action
+<span class="token punctuation">}</span>
+</code></pre><p>首先根据 <code>deps</code> 找出哪些是修改的值，因为一个组件有可能会有许多依赖项，但是在这个组件中只修改了使用的 <code>a</code>, <code>b</code> 没有改变， 那么其他组件依赖了这个 <code>b</code> 也
+不应该更新，所以需要找出改变的依赖项</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">if</span> <span class="token punctuation">(</span>deps<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  deps<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token parameter">key</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> oldValue <span class="token operator">=</span> <span class="token function">getPath</span><span class="token punctuation">(</span>oldState<span class="token punctuation">,</span> key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">const</span> newValue <span class="token operator">=</span> <span class="token function">getPath</span><span class="token punctuation">(</span>state<span class="token punctuation">,</span> key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>oldValue <span class="token operator">!==</span> newValue<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      changeKeys<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>找出改变的依赖项后，对 <code>listeners</code> 进行遍历, 找出所有使用了 <code>useSelector</code> 的地方的所有依赖，看是否存在其他的依赖项也包括这次改变的依赖项，比如此时更改了
+<code>a</code>, 那么所有其他组件中有对 <code>a</code> 的依赖项的都应该进行重新 <code>render</code>。这也是 <code>store</code> 中 <code>dispatch</code> 的主要逻辑。</p><p>基本上一个状态管理的所有代码已经讲清楚了，那么不妨试试。</p><p>点击 <code>increase</code> 或者 <code>decrease</code>, 只打印出了 <code>render count selector</code> 所以每次 <code>useSelector</code> 也只是单次渲染。这个也是局部渲染了。</p><p><img src="https://user-images.githubusercontent.com/17973020/63645935-4c620180-c73b-11e9-8536-122dfed705a7.jpg" alt="context2"/></p><p>最后贴一下代码，代码也可以在<a class=" " href="https://github.com/snakeUni/lanyincaos.cn/tree/master/src/pages/posts/2019-08-24-how-to-use-context-efficient">这里找到</a></p><p><code>react-redux-demo</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">import</span> <span class="token operator">*</span> <span class="token keyword">as</span> React <span class="token keyword">from</span> <span class="token string">'react'</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> Provider<span class="token punctuation">,</span> connect <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'react-redux'</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> createStore <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'redux'</span><span class="token punctuation">;</span>
+
+<span class="token comment">// 一个简单的 reducer</span>
+<span class="token keyword">function</span> <span class="token function">reducer</span><span class="token punctuation">(</span><span class="token parameter">state<span class="token punctuation">,</span> action</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">switch</span> <span class="token punctuation">(</span>action<span class="token punctuation">.</span>type<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">case</span> <span class="token string">'increase'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> count<span class="token punctuation">:</span> state<span class="token punctuation">.</span>count <span class="token operator">+</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token keyword">case</span> <span class="token string">'decrease'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> count<span class="token punctuation">:</span> state<span class="token punctuation">.</span>count <span class="token operator">-</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token keyword">case</span> <span class="token string">'updateName'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> name<span class="token punctuation">:</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token keyword">case</span> <span class="token string">'updateAddress'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> address<span class="token punctuation">:</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">default</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> state<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">const</span> store <span class="token operator">=</span> <span class="token function">createStore</span><span class="token punctuation">(</span>reducer<span class="token punctuation">,</span> <span class="token punctuation">{</span>
+  count<span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span>
+  name<span class="token punctuation">:</span> <span class="token string">'lanyincao'</span><span class="token punctuation">,</span>
+  address<span class="token punctuation">:</span> <span class="token string">'shanghai'</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">class</span> <span class="token class-name">App</span> <span class="token keyword">extends</span> <span class="token class-name">React<span class="token punctuation">.</span>Component</span> <span class="token punctuation">{</span>
+  <span class="token function">render</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">return</span> <span class="token operator">&lt;</span>Provider store<span class="token operator">=</span><span class="token punctuation">{</span>store<span class="token punctuation">}</span><span class="token operator">></span><span class="token punctuation">{</span><span class="token keyword">this</span><span class="token punctuation">.</span>props<span class="token punctuation">.</span>children<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>Provider<span class="token operator">></span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">function</span> <span class="token function">mapCountStateToProps</span><span class="token punctuation">(</span><span class="token parameter">state</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'mapCountStateToProps'</span><span class="token punctuation">,</span> state<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> <span class="token punctuation">{</span> count <span class="token punctuation">}</span> <span class="token operator">=</span> state<span class="token punctuation">;</span>
+  <span class="token keyword">return</span> <span class="token punctuation">{</span> count <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">class</span> <span class="token class-name">Count</span> <span class="token keyword">extends</span> <span class="token class-name">React<span class="token punctuation">.</span>Component</span><span class="token operator">&lt;</span>any<span class="token punctuation">,</span> any<span class="token operator">></span> <span class="token punctuation">{</span>
+  <span class="token function">render</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> <span class="token punctuation">{</span> dispatch <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">.</span>props<span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'render count'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token punctuation">(</span>
+      <span class="token operator">&lt;</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>div<span class="token operator">></span>count<span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token keyword">this</span><span class="token punctuation">.</span>props<span class="token punctuation">.</span>count<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>button onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'increase'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token number">2</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">></span>
+          increase
+        <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+        <span class="token operator">&lt;</span>button onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'decrease'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token number">2</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">></span>
+          decrease
+        <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+    <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">function</span> <span class="token function">mapPersonStateToProps</span><span class="token punctuation">(</span><span class="token parameter">state</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'mapPersonStateToProps'</span><span class="token punctuation">,</span> state<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> <span class="token punctuation">{</span> name<span class="token punctuation">,</span> address <span class="token punctuation">}</span> <span class="token operator">=</span> state<span class="token punctuation">;</span>
+  <span class="token keyword">return</span> <span class="token punctuation">{</span> name<span class="token punctuation">,</span> address <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">class</span> <span class="token class-name">Person</span> <span class="token keyword">extends</span> <span class="token class-name">React<span class="token punctuation">.</span>Component</span><span class="token operator">&lt;</span>any<span class="token operator">></span> <span class="token punctuation">{</span>
+  <span class="token function">render</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">const</span> <span class="token punctuation">{</span> dispatch<span class="token punctuation">,</span> name<span class="token punctuation">,</span> address <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">.</span>props<span class="token punctuation">;</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'render person'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token punctuation">(</span>
+      <span class="token operator">&lt;</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>div<span class="token operator">></span>
+          <span class="token operator">&lt;</span>span<span class="token operator">></span>name<span class="token punctuation">:</span> <span class="token punctuation">{</span>name<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">></span>
+          <span class="token operator">&lt;</span>span style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">{</span> marginLeft<span class="token punctuation">:</span> <span class="token number">20</span> <span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token operator">></span>address<span class="token punctuation">:</span> <span class="token punctuation">{</span>address<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">></span>
+        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>div<span class="token operator">></span>
+          <span class="token operator">&lt;</span>button
+            onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'updateName'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token string">'牧云云'</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+          <span class="token operator">></span>
+            updateName
+          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+          <span class="token operator">&lt;</span>button
+            onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span>
+              <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'updateAddress'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token string">'hangzhou'</span> <span class="token punctuation">}</span><span class="token punctuation">)</span>
+            <span class="token punctuation">}</span>
+          <span class="token operator">></span>
+            updateAddress
+          <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+    <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment">// count</span>
+<span class="token keyword">const</span> ConnectCount <span class="token operator">=</span> <span class="token function">connect</span><span class="token punctuation">(</span>mapCountStateToProps<span class="token punctuation">)</span><span class="token punctuation">(</span>Count<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// person</span>
+<span class="token keyword">const</span> ConnectPerson <span class="token operator">=</span> <span class="token function">connect</span><span class="token punctuation">(</span>mapPersonStateToProps<span class="token punctuation">)</span><span class="token punctuation">(</span>Person<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token keyword">export</span> <span class="token keyword">default</span> <span class="token keyword">function</span> <span class="token function">Demo</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">return</span> <span class="token punctuation">(</span>
+    <span class="token operator">&lt;</span>div<span class="token operator">></span>
+      <span class="token operator">&lt;</span>App<span class="token operator">></span>
+        <span class="token operator">&lt;</span>ConnectCount <span class="token operator">/</span><span class="token operator">></span>
+        <span class="token operator">&lt;</span>ConnectPerson <span class="token operator">/</span><span class="token operator">></span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>App<span class="token operator">></span>
+    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p><code>react-redux-chaos demo</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">import</span> <span class="token operator">*</span> <span class="token keyword">as</span> React <span class="token keyword">from</span> <span class="token string">'react'</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> useStore<span class="token punctuation">,</span> Provider<span class="token punctuation">,</span> useSelector <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'react-redux-chaos'</span><span class="token punctuation">;</span>
+
+<span class="token keyword">const</span> initialState <span class="token operator">=</span> <span class="token punctuation">{</span> count<span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">,</span> name<span class="token punctuation">:</span> <span class="token string">'lanyincao'</span><span class="token punctuation">,</span> address<span class="token punctuation">:</span> <span class="token string">'shanghai'</span> <span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+<span class="token keyword">function</span> <span class="token function">reducer</span><span class="token punctuation">(</span><span class="token parameter">state<span class="token punctuation">,</span> action</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">switch</span> <span class="token punctuation">(</span>action<span class="token punctuation">.</span>type<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">case</span> <span class="token string">'increase'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> count<span class="token punctuation">:</span> state<span class="token punctuation">.</span>count <span class="token operator">+</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token keyword">case</span> <span class="token string">'decrease'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> count<span class="token punctuation">:</span> state<span class="token punctuation">.</span>count <span class="token operator">-</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token keyword">case</span> <span class="token string">'updateName'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> name<span class="token punctuation">:</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token keyword">case</span> <span class="token string">'updateAddress'</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>state<span class="token punctuation">,</span> address<span class="token punctuation">:</span> action<span class="token punctuation">.</span>payload <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">default</span><span class="token punctuation">:</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> state<span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">function</span> <span class="token function">App</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span> children <span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> store <span class="token operator">=</span> <span class="token function">useStore</span><span class="token punctuation">(</span>reducer<span class="token punctuation">,</span> initialState<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">return</span> <span class="token operator">&lt;</span>Provider value<span class="token operator">=</span><span class="token punctuation">{</span>store<span class="token punctuation">}</span><span class="token operator">></span><span class="token punctuation">{</span>children<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>Provider<span class="token operator">></span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">function</span> <span class="token function">Count</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> <span class="token punctuation">{</span> getState<span class="token punctuation">,</span> dispatch <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token function">useSelector</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'render count selector'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token punctuation">[</span><span class="token string">'count'</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">const</span> state<span class="token punctuation">:</span> any <span class="token operator">=</span> <span class="token function">getState</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">return</span> <span class="token punctuation">(</span>
+    <span class="token operator">&lt;</span>div<span class="token operator">></span>
+      <span class="token operator">&lt;</span>div<span class="token operator">></span>count<span class="token punctuation">:</span> <span class="token punctuation">{</span>state<span class="token punctuation">.</span>count<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+      <span class="token operator">&lt;</span>button onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'increase'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token number">2</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">></span>
+        increase
+      <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+      <span class="token operator">&lt;</span>button onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'decrease'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token number">2</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">></span>
+        decrease
+      <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">function</span> <span class="token function">Person</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> <span class="token punctuation">{</span> getState<span class="token punctuation">,</span> dispatch <span class="token punctuation">}</span> <span class="token operator">=</span> <span class="token function">useSelector</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">'render person selector'</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">return</span> <span class="token punctuation">[</span><span class="token string">'name'</span><span class="token punctuation">,</span> <span class="token string">'address'</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">const</span> state<span class="token punctuation">:</span> any <span class="token operator">=</span> <span class="token function">getState</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">return</span> <span class="token punctuation">(</span>
+    <span class="token operator">&lt;</span>div<span class="token operator">></span>
+      <span class="token operator">&lt;</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>span<span class="token operator">></span>name<span class="token punctuation">:</span> <span class="token punctuation">{</span>state<span class="token punctuation">.</span>name<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">></span>
+        <span class="token operator">&lt;</span>span style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">{</span> marginLeft<span class="token punctuation">:</span> <span class="token number">20</span> <span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token operator">></span>address<span class="token punctuation">:</span> <span class="token punctuation">{</span>state<span class="token punctuation">.</span>address<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">></span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+      <span class="token operator">&lt;</span>div<span class="token operator">></span>
+        <span class="token operator">&lt;</span>button
+          onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'updateName'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token string">'牧云云'</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">}</span>
+        <span class="token operator">></span>
+          updateName
+        <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+        <span class="token operator">&lt;</span>button
+          onClick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span>
+            <span class="token function">dispatch</span><span class="token punctuation">(</span><span class="token punctuation">{</span> type<span class="token punctuation">:</span> <span class="token string">'updateAddress'</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> <span class="token string">'hangzhou'</span> <span class="token punctuation">}</span><span class="token punctuation">)</span>
+          <span class="token punctuation">}</span>
+        <span class="token operator">></span>
+          updateAddress
+        <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">></span>
+      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">></span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">export</span> <span class="token keyword">default</span> <span class="token keyword">function</span> <span class="token function">Demo</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">return</span> <span class="token punctuation">(</span>
+    <span class="token operator">&lt;</span>App<span class="token operator">></span>
+      <span class="token operator">&lt;</span>Count <span class="token operator">/</span><span class="token operator">></span>
+      <span class="token operator">&lt;</span>Person <span class="token operator">/</span><span class="token operator">></span>
+    <span class="token operator">&lt;</span><span class="token operator">/</span>App<span class="token operator">></span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><h1 id="conclusion">conclusion</h1><p><code>context</code> 用法很简单，当想要业务逻辑分离的时候可以尝试使用多个 <code>context</code> 能做到减少更新的作用。也可以使用 <code>useMemo</code> 等相关的 <code>api</code>,
+比较在乎 <code>render</code> 次数的话，可以采用 <code>react-redux</code> 一些成熟的库，或者 <a class=" " href="https://github.com/snakeUni/react-redux-chaos">react-redux-chaos</a></p></div><footer class="BlogPostLayout_footer__1p0Ii"><h3 class="BlogPostLayout_title__1egAZ"><a class=" " href="/">lanyincao</a></h3><div class="
+      Bio_Bio__1eiKY
+      BlogPostLayout_bio__2AHhA
+    "><img src="/static/media/bio-pic.fdbb64ab.jpeg" alt="lanyincao"/><p>Personal blog by <a href="https://twitter.com/lanyincao">lanyincao</a>.<br/>I can&#x27;t sing, dance, rap but can code, 🏀</p></div><section class="BlogPostLayout_links__1fVhZ"><a class=" " href="/posts/2019-08-30/how-to-write-test/">← <!-- -->How to write test</a><a class="BlogPostLayout_next__3tOcG " href="/posts/2019-08-19/form/">🤔 Form<!-- --> →</a></section></footer></article></main></div></div><script>!function(o){function e(e){for(var t,r,n=e[0],c=e[1],f=e[2],d=0,a=[];d<n.length;d++)r=n[d],l[r]&&a.push(l[r][0]),l[r]=0;for(t in c)Object.prototype.hasOwnProperty.call(c,t)&&(o[t]=c[t]);for(p&&p(e);a.length;)a.shift()();return i.push.apply(i,f||[]),u()}function u(){for(var e,t=0;t<i.length;t++){for(var r=i[t],n=!0,c=1;c<r.length;c++){var f=r[c];0!==l[f]&&(n=!1)}n&&(i.splice(t--,1),e=s(s.s=r[0]))}return e}var r={},a={43:0},l={43:0},i=[];function s(e){if(r[e])return r[e].exports;var t=r[e]={i:e,l:!1,exports:{}};return o[e].call(t.exports,t,t.exports,s),t.l=!0,t.exports}s.e=function(i){var e=[];a[i]?e.push(a[i]):0!==a[i]&&{1:1,23:1}[i]&&e.push(a[i]=new Promise(function(e,n){for(var t="static/css/"+({}[i]||i)+"."+{1:"27c8494b",2:"31d6cfe0",3:"31d6cfe0",4:"31d6cfe0",5:"31d6cfe0",6:"31d6cfe0",7:"31d6cfe0",8:"31d6cfe0",9:"31d6cfe0",10:"31d6cfe0",11:"31d6cfe0",12:"31d6cfe0",13:"31d6cfe0",14:"31d6cfe0",15:"31d6cfe0",16:"31d6cfe0",17:"31d6cfe0",18:"31d6cfe0",19:"31d6cfe0",20:"31d6cfe0",21:"31d6cfe0",22:"31d6cfe0",23:"d3b34b05",24:"31d6cfe0",25:"31d6cfe0",26:"31d6cfe0",27:"31d6cfe0",28:"31d6cfe0",29:"31d6cfe0",30:"31d6cfe0",31:"31d6cfe0",32:"31d6cfe0",33:"31d6cfe0",34:"31d6cfe0",35:"31d6cfe0",36:"31d6cfe0",37:"31d6cfe0",38:"31d6cfe0",39:"31d6cfe0",40:"31d6cfe0",41:"31d6cfe0"}[i]+".chunk.css",c=s.p+t,r=document.getElementsByTagName("link"),f=0;f<r.length;f++){var d=(o=r[f]).getAttribute("data-href")||o.getAttribute("href");if("stylesheet"===o.rel&&(d===t||d===c))return e()}var a=document.getElementsByTagName("style");for(f=0;f<a.length;f++){var o;if((d=(o=a[f]).getAttribute("data-href"))===t||d===c)return e()}var u=document.createElement("link");u.rel="stylesheet",u.type="text/css",u.onload=e,u.onerror=function(e){var t=e&&e.target&&e.target.src||c,r=new Error("Loading CSS chunk "+i+" failed.\n("+t+")");r.request=t,n(r)},u.href=c,document.getElementsByTagName("head")[0].appendChild(u)}).then(function(){a[i]=0}));var r=l[i];if(0!==r)if(r)e.push(r[2]);else{var t=new Promise(function(e,t){r=l[i]=[e,t]});e.push(r[2]=t);var n,c=document.getElementsByTagName("head")[0],f=document.createElement("script");f.charset="utf-8",f.timeout=120,s.nc&&f.setAttribute("nonce",s.nc),f.src=s.p+"static/js/"+({}[i]||i)+"."+{1:"18016ef5",2:"f51ae852",3:"2d812e0c",4:"959e45b9",5:"031228ef",6:"da64b01a",7:"c20265b4",8:"3708fc80",9:"76d5a1f1",10:"64d279dc",11:"15bdaa3d",12:"a289339e",13:"6ed3fae5",14:"c0219476",15:"1b2dfa34",16:"c95df50e",17:"854d2668",18:"fe4e0156",19:"75b2ab08",20:"5cc3e2dd",21:"85a6bb34",22:"f5b6dab9",23:"873b678f",24:"299ad1b2",25:"26732315",26:"8ed938bb",27:"9e08b9c8",28:"8c5bf47d",29:"651315e7",30:"4de03612",31:"a827ef55",32:"9f8e8c89",33:"4e98a6ac",34:"8fa7acd9",35:"f7fd16e7",36:"c8a9136e",37:"7fd46dad",38:"ab859197",39:"242ef20f",40:"a8b763a6",41:"fe59cd2f"}[i]+".chunk.js",n=function(e){f.onerror=f.onload=null,clearTimeout(d);var t=l[i];if(0!==t){if(t){var r=e&&("load"===e.type?"missing":e.type),n=e&&e.target&&e.target.src,c=new Error("Loading chunk "+i+" failed.\n("+r+": "+n+")");c.type=r,c.request=n,t[1](c)}l[i]=void 0}};var d=setTimeout(function(){n({type:"timeout",target:f})},12e4);f.onerror=f.onload=n,c.appendChild(f)}return Promise.all(e)},s.m=o,s.c=r,s.d=function(e,t,r){s.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:r})},s.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},s.t=function(t,e){if(1&e&&(t=s(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var r=Object.create(null);if(s.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var n in t)s.d(r,n,function(e){return t[e]}.bind(null,n));return r},s.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return s.d(t,"a",t),t},s.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},s.p="/",s.oe=function(e){throw console.error(e),e};var t=window.webpackJsonp=window.webpackJsonp||[],n=t.push.bind(t);t.push=e,t=t.slice();for(var c=0;c<t.length;c++)e(t[c]);var p=n;u()}([])</script><script src="/static/js/42.e4ff5a7a.chunk.js"></script><script src="/static/js/main.763db4b1.chunk.js"></script></body></html>

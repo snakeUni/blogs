@@ -1,0 +1,2 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[19],{130:function(t,n,e){"use strict";e.r(n),n.default={title:"how to study",tags:["react","study"],spoiler:"how to study",getContent:function(){return e.e(39).then(e.bind(null,106))}}}}]);
+//# sourceMappingURL=19.75b2ab08.chunk.js.map

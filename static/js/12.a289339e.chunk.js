@@ -1,0 +1,2 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[12],{123:function(t,e,n){"use strict";n.r(e),e.default={title:"How to write test",tags:["react","test"],spoiler:"write test",getContent:function(){return n.e(32).then(n.bind(null,85))}}}}]);
+//# sourceMappingURL=12.a289339e.chunk.js.map

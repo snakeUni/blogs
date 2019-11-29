@@ -1,2 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[4],{78:function(t,e,n){"use strict";n.r(e),e.default={title:"Why React Hooks",tags:["react","hook"],spoiler:"why React Hooks",getContent:function(){return n.e(13).then(n.bind(null,69))}}}}]);
-//# sourceMappingURL=4.dc812a82.chunk.js.map

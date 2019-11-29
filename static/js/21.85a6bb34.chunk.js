@@ -1,0 +1,2 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[21],{132:function(n,t,e){"use strict";e.r(t),t.default={title:"\u968f\u6587",tags:["\u968f\u6587"],spoiler:"\u968f\u6587",getContent:function(){return e.e(41).then(e.bind(null,112))}}}}]);
+//# sourceMappingURL=21.85a6bb34.chunk.js.map

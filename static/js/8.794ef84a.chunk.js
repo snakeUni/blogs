@@ -1,2 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[8],{82:function(t,e,n){"use strict";n.r(e),e.default={title:"React Hooks State \ud83e\udd14",tags:["react","hook","state"],spoiler:"hooks state",getContent:function(){return n.e(17).then(n.bind(null,73))}}}}]);
-//# sourceMappingURL=8.794ef84a.chunk.js.map

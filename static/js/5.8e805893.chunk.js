@@ -1,2 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[5],{79:function(t,n,c){"use strict";c.r(n),n.default={title:"A try/catch quiz",tags:["try catch"],spoiler:"a try/catch quiz",getContent:function(){return c.e(14).then(c.bind(null,70))}}}}]);
-//# sourceMappingURL=5.8e805893.chunk.js.map

@@ -1,0 +1,2 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[18],{129:function(t,o,n){"use strict";n.r(o),o.default={title:"a thought about hook",tags:["react","hook"],spoiler:"a thought about hook",getContent:function(){return n.e(38).then(n.bind(null,100))}}}}]);
+//# sourceMappingURL=18.fe4e0156.chunk.js.map

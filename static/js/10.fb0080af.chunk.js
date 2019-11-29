@@ -1,2 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[10],{84:function(t,e,n){"use strict";n.r(e),e.default={title:"\ud83e\udd14 Form",tags:["react","form"],spoiler:"context form observer",getContent:function(){return n.e(19).then(n.bind(null,75))}}}}]);
-//# sourceMappingURL=10.fb0080af.chunk.js.map

@@ -1,0 +1,257 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="shortcut icon" href="/fa.jpg"/><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"/><meta name="theme-color" content="#000000"/><link rel="manifest" href="/manifest.json"/>
+    <title>useSubscription</title>
+    <link rel="canonical" href="/posts/2019-11-16/use-subscription" />
+    <link rel="stylesheet" href="/static/css/1.27c8494b.chunk.css" />
+  <link href="/static/css/main.0e6724e3.chunk.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"><div class="BlogLayout_container__1wjbv"><div class="
+        LoadingIndicator_LoadingIndicator__LXZCC
+        
+        undefined
+      "></div><header><h3 class="BlogLayout_title__U0zfd"><a class=" " href="/">lanyincao</a></h3></header><main><article><header class="BlogPostLayout_header__6lPZ1"><h1 class="BlogPostLayout_title__1egAZ"><a class=" " href="/posts/2019-11-16/use-subscription/">useSubscription</a></h1><small><time dateTime="Fri, 15 Nov 2019 16:00:00 GMT">November 16, 2019</time> <!-- -->•<!-- --> <ul class="ArticleMeta_tags__30Wbg"><li><a class=" " href="/tags/react/">react</a></li><li><a class=" " href="/tags/key/">key</a></li></ul> <!-- -->•<!-- --> <span>☕️☕️<!-- --> <!-- -->8<!-- --> min read</span></small></header><div class="BlogPostLayout_content__1CRXP"><p><code>useSubscription</code> 即订阅模式，这是 <code>react</code> 自身提供的 <code>Hook</code>, 本文主要通过几个方面来介绍这个 <code>Hook</code>, 大家也可以自行参考<a class=" " href="https://github.com/facebook/react/blob/master/packages/use-subscription/README.md">官网</a></p><h2 id="目录">目录</h2><ul><li>为什么会有这个 useSubscription<ul><li>When should you NOT use this?</li><li>What types of subscriptions can this support?</li></ul></li><li>useSubscription 的内部实现</li><li>手动实现一个 useSubscription</li></ul><h3 id="为什么会有这个-usesubscription">为什么会有这个 useSubscription</h3><p><a class=" " href="https://github.com/facebook/react/tree/master/packages/use-subscription">useSubscription</a> 的出现主要是为了在 React concurrent mode 下可以安全的管理状态。
+主要用于读取某个值，值发生变化的时候可以同步更新相应的组件然后展示出来。</p><h4 id="when-should-you-not-use-this">When should you NOT use this?</h4><ul><li>Redux/Flux stores should use the context API instead.</li><li>I/O subscriptions (e.g. notifications) that update infrequently should use a mechanism like react-cache instead.</li><li>Complex libraries like Relay/Apollo should manage subscriptions manually with the same techniques which this library uses under the hood (as referenced here) in a way that is most optimized for their library usage.</li></ul><h4 id="what-types-of-subscriptions-can-this-support">What types of subscriptions can this support?</h4><p>This abstraction can handle a variety of subscription types, including:</p><ul><li>Event dispatchers like HTMLInputElement.</li><li>Custom pub/sub components like Relay’s FragmentSpecResolver.</li><li>Observable types like RxJS BehaviorSubject and ReplaySubject. (Types like RxJS Subject or Observable are not supported, because they provide no way to read the “current” value after it has been emitted.)</li></ul><p>Note that JavaScript promises are also not supported because they provide no way to synchronously read the “current” value.</p><p>以上信息都来自官网</p><h3 id="usesubscription-的内部实现">useSubscription 的内部实现</h3><p><code>useSubscription</code> 的<a class=" " href="https://github.com/facebook/react/blob/master/packages/use-subscription/src/useSubscription.js">内部代码</a>很简单，不超过 20 行，在内部实现对任意的值的订阅</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers="24,25,26,27,28,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47"><span class="token keyword">import</span> <span class="token punctuation">{</span> useDebugValue<span class="token punctuation">,</span> useEffect<span class="token punctuation">,</span> useState <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">"react"</span><span class="token punctuation">;</span>
+
+<span class="token comment">// Hook used for safely managing subscriptions in concurrent mode.</span>
+<span class="token comment">//</span>
+<span class="token comment">// In order to avoid removing and re-adding subscriptions each time this hook is called,</span>
+<span class="token comment">// the parameters passed to this hook should be memoized in some way–</span>
+<span class="token comment">// either by wrapping the entire params object with useMemo()</span>
+<span class="token comment">// or by wrapping the individual callbacks with useCallback().</span>
+<span class="token keyword">export</span> <span class="token keyword">function</span> useSubscription<span class="token operator">&lt;</span>Value<span class="token operator">></span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+  <span class="token comment">// (Synchronously) returns the current value of our subscription.</span>
+  getCurrentValue<span class="token punctuation">,</span>
+
+  <span class="token comment">// This function is passed an event handler to attach to the subscription.</span>
+  <span class="token comment">// It should return an unsubscribe function that removes the handler.</span>
+  subscribe
+<span class="token punctuation">}</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token operator">|</span>
+  <span class="token function-variable function">getCurrentValue</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> Value<span class="token punctuation">,</span>
+  <span class="token function-variable function">subscribe</span><span class="token punctuation">:</span> <span class="token punctuation">(</span><span class="token parameter">callback<span class="token punctuation">:</span> Function</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token keyword">void</span>
+<span class="token operator">|</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">:</span> Value <span class="token punctuation">{</span>
+  <span class="token comment">// Read the current value from our subscription.</span>
+  <span class="token comment">// When this value changes, we'll schedule an update with React.</span>
+  <span class="token comment">// It's important to also store the hook params so that we can check for staleness.</span>
+  <span class="token comment">// (See the comment in checkForUpdates() below for more info.)</span>
+<span class="highlighted-line">  <span class="token keyword">const</span> <span class="token punctuation">[</span>state<span class="token punctuation">,</span> setState<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token function">useState</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">(</span><span class="token punctuation">{</span></span><span class="highlighted-line">    getCurrentValue<span class="token punctuation">,</span></span><span class="highlighted-line">    subscribe<span class="token punctuation">,</span></span><span class="highlighted-line">    value<span class="token punctuation">:</span> <span class="token function">getCurrentValue</span><span class="token punctuation">(</span><span class="token punctuation">)</span></span><span class="highlighted-line">  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></span>
+  <span class="token keyword">let</span> valueToReturn <span class="token operator">=</span> state<span class="token punctuation">.</span>value<span class="token punctuation">;</span>
+
+  <span class="token comment">// If parameters have changed since our last render, schedule an update with its current value.</span>
+<span class="highlighted-line">  <span class="token keyword">if</span> <span class="token punctuation">(</span></span><span class="highlighted-line">    state<span class="token punctuation">.</span>getCurrentValue <span class="token operator">!==</span> getCurrentValue <span class="token operator">||</span></span><span class="highlighted-line">    state<span class="token punctuation">.</span>subscribe <span class="token operator">!==</span> subscribe</span><span class="highlighted-line">  <span class="token punctuation">)</span> <span class="token punctuation">{</span></span><span class="highlighted-line">    <span class="token comment">// If the subscription has been updated, we'll schedule another update with React.</span></span><span class="highlighted-line">    <span class="token comment">// React will process this update immediately, so the old subscription value won't be committed.</span></span><span class="highlighted-line">    <span class="token comment">// It is still nice to avoid returning a mismatched value though, so let's override the return value.</span></span><span class="highlighted-line">    valueToReturn <span class="token operator">=</span> <span class="token function">getCurrentValue</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></span><span class="highlighted-line"></span><span class="highlighted-line">    <span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span></span><span class="highlighted-line">      getCurrentValue<span class="token punctuation">,</span></span><span class="highlighted-line">      subscribe<span class="token punctuation">,</span></span><span class="highlighted-line">      value<span class="token punctuation">:</span> valueToReturn</span><span class="highlighted-line">    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></span><span class="highlighted-line">  <span class="token punctuation">}</span></span>
+  <span class="token comment">// Display the current value for this hook in React DevTools.</span>
+  <span class="token function">useDebugValue</span><span class="token punctuation">(</span>valueToReturn<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// It is important not to subscribe while rendering because this can lead to memory leaks.</span>
+  <span class="token comment">// (Learn more at reactjs.org/docs/strict-mode.html#detecting-unexpected-side-effects)</span>
+  <span class="token comment">// Instead, we wait until the commit phase to attach our handler.</span>
+  <span class="token comment">//</span>
+  <span class="token comment">// We intentionally use a passive effect (useEffect) rather than a synchronous one (useLayoutEffect)</span>
+  <span class="token comment">// so that we don't stretch the commit phase.</span>
+  <span class="token comment">// This also has an added benefit when multiple components are subscribed to the same source:</span>
+  <span class="token comment">// It allows each of the event handlers to safely schedule work without potentially removing an another handler.</span>
+  <span class="token comment">// (Learn more at https://codesandbox.io/s/k0yvr5970o)</span>
+  <span class="token function">useEffect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">let</span> didUnsubscribe <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+
+    <span class="token keyword">const</span> <span class="token function-variable function">checkForUpdates</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      <span class="token comment">// It's possible that this callback will be invoked even after being unsubscribed,</span>
+      <span class="token comment">// if it's removed as a result of a subscription event/update.</span>
+      <span class="token comment">// In this case, React will log a DEV warning about an update from an unmounted component.</span>
+      <span class="token comment">// We can avoid triggering that warning with this check.</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span>didUnsubscribe<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">return</span><span class="token punctuation">;</span>
+      <span class="token punctuation">}</span>
+
+      <span class="token comment">// We use a state updater function to avoid scheduling work for a stale source.</span>
+      <span class="token comment">// However it's important to eagerly read the currently value,</span>
+      <span class="token comment">// so that all scheduled work shares the same value (in the event of multiple subscriptions).</span>
+      <span class="token comment">// This avoids visual "tearing" when a mutation happens during a (concurrent) render.</span>
+      <span class="token keyword">const</span> value <span class="token operator">=</span> <span class="token function">getCurrentValue</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token function">setState</span><span class="token punctuation">(</span><span class="token parameter">prevState</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+        <span class="token comment">// Ignore values from stale sources!</span>
+        <span class="token comment">// Since we subscribe an unsubscribe in a passive effect,</span>
+        <span class="token comment">// it's possible that this callback will be invoked for a stale (previous) subscription.</span>
+        <span class="token comment">// This check avoids scheduling an update for that stale subscription.</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>
+          prevState<span class="token punctuation">.</span>getCurrentValue <span class="token operator">!==</span> getCurrentValue <span class="token operator">||</span>
+          prevState<span class="token punctuation">.</span>subscribe <span class="token operator">!==</span> subscribe
+        <span class="token punctuation">)</span> <span class="token punctuation">{</span>
+          <span class="token keyword">return</span> prevState<span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+
+        <span class="token comment">// Some subscriptions will auto-invoke the handler, even if the value hasn't changed.</span>
+        <span class="token comment">// If the value hasn't changed, no update is needed.</span>
+        <span class="token comment">// Return state as-is so React can bail out and avoid an unnecessary render.</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>prevState<span class="token punctuation">.</span>value <span class="token operator">===</span> value<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+          <span class="token keyword">return</span> prevState<span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+
+        <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>prevState<span class="token punctuation">,</span> value <span class="token punctuation">}</span><span class="token punctuation">;</span>
+      <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token keyword">const</span> unsubscribe <span class="token operator">=</span> <span class="token function">subscribe</span><span class="token punctuation">(</span>checkForUpdates<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// Because we're subscribing in a passive effect,</span>
+    <span class="token comment">// it's possible that an update has occurred between render and our effect handler.</span>
+    <span class="token comment">// Check for this and schedule an update if work has occurred.</span>
+    <span class="token function">checkForUpdates</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token keyword">return</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      didUnsubscribe <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+      <span class="token function">unsubscribe</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">[</span>getCurrentValue<span class="token punctuation">,</span> subscribe<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Return the current value for our caller to use while rendering.</span>
+  <span class="token keyword">return</span> valueToReturn<span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>不妨对源码进行分析，首先关注</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">const</span> <span class="token punctuation">[</span>state<span class="token punctuation">,</span> setState<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token function">useState</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">(</span><span class="token punctuation">{</span>
+  getCurrentValue<span class="token punctuation">,</span>
+  subscribe<span class="token punctuation">,</span>
+  value<span class="token punctuation">:</span> <span class="token function">getCurrentValue</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre><p>这里把 <code>props</code> 转换成 <code>state</code> 来存储，这个相当于 class 中的 props 转成 state 是一样的。那为什么需要这么做呢？
+在 class 中把 props 同步成 state 的地方有三个声明周期的钩子可以做到，</p><ol><li>一个是已经标记为 <code>unsafe</code> 的 <code>componentWillReceiveProps</code> 在接收到新的 props 的时候可以转换成 state,</li><li>另外是 <code>componentDidUpdate</code> 在每次更新的时候，可以对 <code>this.props</code> 和 <code>pre.props</code> 进行比较，然后在内部进行 <code>setState</code></li><li>是一个静态方法即 <code>getDrivedStateFromProps</code> 在这个静态方法中返回相应的 state.</li></ol><p>这三个方法执行的顺序是不一样的。但是在函数组件中，淡化了生命周期的概念，那么如何模拟 <code>getDrivedStateFromProps</code> 或 <code>componentWillReceiveProps</code> 呢。
+如果需要模拟这两个生命周期的话，那么又想做优化，就需要比较上一次的值和下一次的值，上一次的值存储在哪里呢？此时就可以存储到 state 中，然后下一次 <code>render</code> 的时候，
+比较这一次的 props 和 state 如果不一样则重新 <code>setState</code>, 即下面这段代码</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">if</span> <span class="token punctuation">(</span>
+  state<span class="token punctuation">.</span>getCurrentValue <span class="token operator">!==</span> getCurrentValue <span class="token operator">||</span>
+  state<span class="token punctuation">.</span>subscribe <span class="token operator">!==</span> subscribe
+<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// If the subscription has been updated, we'll schedule another update with React.</span>
+  <span class="token comment">// React will process this update immediately, so the old subscription value won't be committed.</span>
+  <span class="token comment">// It is still nice to avoid returning a mismatched value though, so let's override the return value.</span>
+  valueToReturn <span class="token operator">=</span> <span class="token function">getCurrentValue</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token function">setState</span><span class="token punctuation">(</span><span class="token punctuation">{</span>
+    getCurrentValue<span class="token punctuation">,</span>
+    subscribe<span class="token punctuation">,</span>
+    value<span class="token punctuation">:</span> valueToReturn
+  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>通过上述代码，我们已经知道如何更新新的状态，那么在值发生变化的时候还需要执行状态的变更从而实现组件的 <code>re-render</code>，这段代码就是在 <code>useEffect</code> 中</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers="24,25,26,46"><span class="token function">useEffect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+  <span class="token keyword">let</span> didUnsubscribe <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">const</span> <span class="token function-variable function">checkForUpdates</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token comment">// It's possible that this callback will be invoked even after being unsubscribed,</span>
+    <span class="token comment">// if it's removed as a result of a subscription event/update.</span>
+    <span class="token comment">// In this case, React will log a DEV warning about an update from an unmounted component.</span>
+    <span class="token comment">// We can avoid triggering that warning with this check.</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>didUnsubscribe<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+
+    <span class="token comment">// We use a state updater function to avoid scheduling work for a stale source.</span>
+    <span class="token comment">// However it's important to eagerly read the currently value,</span>
+    <span class="token comment">// so that all scheduled work shares the same value (in the event of multiple subscriptions).</span>
+    <span class="token comment">// This avoids visual "tearing" when a mutation happens during a (concurrent) render.</span>
+    <span class="token keyword">const</span> value <span class="token operator">=</span> <span class="token function">getCurrentValue</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token function">setState</span><span class="token punctuation">(</span><span class="token parameter">prevState</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      <span class="token comment">// Ignore values from stale sources!</span>
+      <span class="token comment">// Since we subscribe an unsubscribe in a passive effect,</span>
+      <span class="token comment">// it's possible that this callback will be invoked for a stale (previous) subscription.</span>
+      <span class="token comment">// This check avoids scheduling an update for that stale subscription.</span>
+<span class="highlighted-line">      <span class="token keyword">if</span> <span class="token punctuation">(</span></span><span class="highlighted-line">        prevState<span class="token punctuation">.</span>getCurrentValue <span class="token operator">!==</span> getCurrentValue <span class="token operator">||</span></span><span class="highlighted-line">        prevState<span class="token punctuation">.</span>subscribe <span class="token operator">!==</span> subscribe</span>      <span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">return</span> prevState<span class="token punctuation">;</span>
+      <span class="token punctuation">}</span>
+
+      <span class="token comment">// Some subscriptions will auto-invoke the handler, even if the value hasn't changed.</span>
+      <span class="token comment">// If the value hasn't changed, no update is needed.</span>
+      <span class="token comment">// Return state as-is so React can bail out and avoid an unnecessary render.</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span>prevState<span class="token punctuation">.</span>value <span class="token operator">===</span> value<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">return</span> prevState<span class="token punctuation">;</span>
+      <span class="token punctuation">}</span>
+
+      <span class="token keyword">return</span> <span class="token punctuation">{</span> <span class="token operator">...</span>prevState<span class="token punctuation">,</span> value <span class="token punctuation">}</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> unsubscribe <span class="token operator">=</span> <span class="token function">subscribe</span><span class="token punctuation">(</span>checkForUpdates<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Because we're subscribing in a passive effect,</span>
+  <span class="token comment">// it's possible that an update has occurred between render and our effect handler.</span>
+  <span class="token comment">// Check for this and schedule an update if work has occurred.</span>
+<span class="highlighted-line">  <span class="token function">checkForUpdates</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></span>
+  <span class="token keyword">return</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    didUnsubscribe <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+    <span class="token function">unsubscribe</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">[</span>getCurrentValue<span class="token punctuation">,</span> subscribe<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre><p>在 <code>useEffect</code> 中会进行值的比较来优化 <code>render</code>， 如果值不发生变化则不进行</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">if</span> <span class="token punctuation">(</span>prevState<span class="token punctuation">.</span>value <span class="token operator">===</span> value<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">return</span> prevState<span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>并且在 <code>getCurrentValue</code> 和 <code>subscribe</code> 发生变化的时候则重新执行 <code>useEffect</code>, 总的来说源码非常简单，那么 <code>useSubscription</code> 的应用场景有哪些呢？
+这些在官网上都已经标记了出来。<a class=" " href="https://github.com/facebook/react/blob/master/packages/use-subscription/src/__tests__/useSubscription-test.internal.js">点击查看</a></p><h3 id="手动实现一个-usesubscription">手动实现一个 useSubscription</h3><p>我们已经知道了 React 本身的 <code>useSubscription</code> 的事情，那么我们能否自己实现一个这样形式的订阅呢？首先 <code>useSubscription</code> 现在通常用于状态管理库中，类似的有 Redux 的 <code>useSelector</code>,
+目前其他的一些库也都实现了类似的效果。那么不妨就实现一个类似的也叫做 <code>useSelector</code></p><p>首先定义这个函数</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">useSelector</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// do something</span>
+<span class="token punctuation">}</span>
+</code></pre><p>先考虑一下 useSelector 需要做什么， <code>useSelector</code> 需要是在监听的值发生变化的时候渲染这个组件。通过渲染一个组件有多种方式，不妨写一个 hook 叫做 <code>useForceUpdate</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">useForceUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> <span class="token punctuation">[</span>update<span class="token punctuation">,</span> setUpdate<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token function">useState</span><span class="token punctuation">(</span><span class="token boolean">false</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">const</span> <span class="token function-variable function">forceUpdate</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token function">setUpdate</span><span class="token punctuation">(</span><span class="token operator">!</span>update<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">return</span> forceUpdate<span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>有了 <code>forceUpdate</code> 后需要实现一个和 <code>useSubscription</code> 一个的优化效果，就是需要一个比较函数， 我们不像 <code>useSubscription</code> 那样直接暴露一个叫做 getCurrentValue 的方法，因为
+<code>useSelector</code> 是为了拿到 <code>store</code> 中的数据，只有在 store 中的数据发生变化的时候才会 <code>render</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">compare</span><span class="token punctuation">(</span><span class="token parameter">oldValue<span class="token punctuation">,</span> newValue</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// value 是一个数组</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>oldValue<span class="token punctuation">.</span>length <span class="token operator">!==</span> newValue<span class="token punctuation">.</span>length<span class="token punctuation">)</span> <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">let</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> oldValue<span class="token punctuation">.</span>length<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>oldValue<span class="token punctuation">[</span>i<span class="token punctuation">]</span> <span class="token operator">!==</span> newValue<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token keyword">return</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span>
+  <span class="token keyword">return</span> <span class="token boolean">true</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>有了比较函数后就可以实现 <code>useSelector</code>, <code>useSelector</code> 需要监听器的值是用户传入的，通常用户需要监听器的值是存储在 store 中的值，所以我们可以给 <code>useSelector</code> 传递一个函数，
+函数的第一个参数就是我们的 <code>store</code></p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">useSelector</span><span class="token punctuation">(</span><span class="token parameter">depFn</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token comment">// 通过某个 context 获取到 sunscribers</span>
+  <span class="token keyword">const</span> subscribers <span class="token operator">=</span> <span class="token function">useContext</span><span class="token punctuation">(</span>xxx<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> forceUpdate <span class="token operator">=</span> <span class="token function">useForceUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword">const</span> depFnRef <span class="token operator">=</span> <span class="token function">useRef</span><span class="token punctuation">(</span>depFn<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  depFnRef<span class="token punctuation">.</span>current <span class="token operator">=</span> depFn<span class="token punctuation">;</span>
+  <span class="token keyword">const</span> depValueRef <span class="token operator">=</span> <span class="token function">useRef</span><span class="token punctuation">(</span><span class="token function">depFn</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// 这里是 useEffect 中的 订阅函数</span>
+  <span class="token function">useEffect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token comment">// 订阅函数存储的是 store, 可以在 useSelector 内部使用 useContext() 来获取这个 store</span>
+    <span class="token keyword">function</span> <span class="token function">subscriber</span><span class="token punctuation">(</span><span class="token parameter">store</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token keyword">const</span> oldValue <span class="token operator">=</span> depValueRef<span class="token punctuation">.</span>current<span class="token punctuation">;</span>
+      <span class="token keyword">const</span> newValue <span class="token operator">=</span> depFnRef<span class="token punctuation">.</span><span class="token function">current</span><span class="token punctuation">(</span>store<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token function">compare</span><span class="token punctuation">(</span>oldValue<span class="token punctuation">,</span> newValue<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token comment">// 如果不相等则强制更新</span>
+        <span class="token function">forceUpdate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        depValueRef<span class="token punctuation">.</span>current <span class="token operator">=</span> newValue<span class="token punctuation">;</span>
+      <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span>
+    subscribers<span class="token punctuation">.</span><span class="token function">register</span><span class="token punctuation">(</span>subscriber<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token keyword">return</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+      subscribers<span class="token punctuation">.</span><span class="token function">unregister</span><span class="token punctuation">(</span>subscriber<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>那么 <code>subscribers</code> 是什么样子的呢？<code>subscribers</code> 需要有 <code>register</code> 和 <code>unregister</code> 方法</p><pre><code class="language-jsx" data-language="jsx" data-highlighted-line-numbers=""><span class="token keyword">function</span> <span class="token function">useSubscriber</span><span class="token punctuation">(</span><span class="token parameter">store</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword">const</span> subscribersRef <span class="token operator">=</span> <span class="token function">useRef</span><span class="token punctuation">(</span><span class="token keyword">new</span> <span class="token class-name">Set</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">const</span> <span class="token function-variable function">register</span> <span class="token operator">=</span> <span class="token parameter">subscriber</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    subscribersRef<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">set</span><span class="token punctuation">(</span>subscriber<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">const</span> <span class="token function-variable function">unregister</span> <span class="token operator">=</span> <span class="token parameter">subscriber</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>subscribersRef<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span>subscriber<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      subscribersRef<span class="token punctuation">.</span>current<span class="token punctuation">.</span><span class="token function">delete</span><span class="token punctuation">(</span>subscriber<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">const</span> <span class="token function-variable function">notify</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=></span> <span class="token punctuation">{</span>
+    <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">const</span> subscriber <span class="token keyword">of</span> subscribersRef<span class="token punctuation">.</span>current<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+      <span class="token function">subscriber</span><span class="token punctuation">(</span>store<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+  <span class="token keyword">return</span> <span class="token punctuation">{</span> register<span class="token punctuation">,</span> unregister <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>这就是一个 <code>useSubscriber</code>, 内部实现了注册和取消注册的功能。那么这个 <code>useSubscriber</code> 为什么还有一个 <code>notify</code> 功能呢？ <code>notify</code> 的作用就是执行每一个
+监听器就是 <code>Redux</code> 中的 <code>listener()</code> 是一样的。所以这里可以看做的 <code>listener()</code>。</p><p>这基本上就是一个很基础的 <code>useSelector</code> 因为为了简便所以依赖于状态管理的一些参数，如果要实现任意值的监听。那么使用 React 本身的 <code>useSubscription</code> 即可。目前可以用于
+事件的监听等等。这个对于非受控的表单作用会有很大很大。</p></div><footer class="BlogPostLayout_footer__1p0Ii"><h3 class="BlogPostLayout_title__1egAZ"><a class=" " href="/">lanyincao</a></h3><div class="
+      Bio_Bio__1eiKY
+      BlogPostLayout_bio__2AHhA
+    "><img src="/static/media/bio-pic.fdbb64ab.jpeg" alt="lanyincao"/><p>Personal blog by <a href="https://twitter.com/lanyincao">lanyincao</a>.<br/>I can&#x27;t sing, dance, rap but can code, 🏀</p></div><section class="BlogPostLayout_links__1fVhZ"><a class=" " href="/posts/2019-11-23/a-thought-of-hook/">← <!-- -->a thought about hook</a><a class="BlogPostLayout_next__3tOcG " href="/posts/2019-11-02/a-callback-thinking/">react callback thinking<!-- --> →</a></section></footer></article></main></div></div><script>!function(o){function e(e){for(var t,r,n=e[0],c=e[1],f=e[2],d=0,a=[];d<n.length;d++)r=n[d],l[r]&&a.push(l[r][0]),l[r]=0;for(t in c)Object.prototype.hasOwnProperty.call(c,t)&&(o[t]=c[t]);for(p&&p(e);a.length;)a.shift()();return i.push.apply(i,f||[]),u()}function u(){for(var e,t=0;t<i.length;t++){for(var r=i[t],n=!0,c=1;c<r.length;c++){var f=r[c];0!==l[f]&&(n=!1)}n&&(i.splice(t--,1),e=s(s.s=r[0]))}return e}var r={},a={43:0},l={43:0},i=[];function s(e){if(r[e])return r[e].exports;var t=r[e]={i:e,l:!1,exports:{}};return o[e].call(t.exports,t,t.exports,s),t.l=!0,t.exports}s.e=function(i){var e=[];a[i]?e.push(a[i]):0!==a[i]&&{1:1,23:1}[i]&&e.push(a[i]=new Promise(function(e,n){for(var t="static/css/"+({}[i]||i)+"."+{1:"27c8494b",2:"31d6cfe0",3:"31d6cfe0",4:"31d6cfe0",5:"31d6cfe0",6:"31d6cfe0",7:"31d6cfe0",8:"31d6cfe0",9:"31d6cfe0",10:"31d6cfe0",11:"31d6cfe0",12:"31d6cfe0",13:"31d6cfe0",14:"31d6cfe0",15:"31d6cfe0",16:"31d6cfe0",17:"31d6cfe0",18:"31d6cfe0",19:"31d6cfe0",20:"31d6cfe0",21:"31d6cfe0",22:"31d6cfe0",23:"d3b34b05",24:"31d6cfe0",25:"31d6cfe0",26:"31d6cfe0",27:"31d6cfe0",28:"31d6cfe0",29:"31d6cfe0",30:"31d6cfe0",31:"31d6cfe0",32:"31d6cfe0",33:"31d6cfe0",34:"31d6cfe0",35:"31d6cfe0",36:"31d6cfe0",37:"31d6cfe0",38:"31d6cfe0",39:"31d6cfe0",40:"31d6cfe0",41:"31d6cfe0"}[i]+".chunk.css",c=s.p+t,r=document.getElementsByTagName("link"),f=0;f<r.length;f++){var d=(o=r[f]).getAttribute("data-href")||o.getAttribute("href");if("stylesheet"===o.rel&&(d===t||d===c))return e()}var a=document.getElementsByTagName("style");for(f=0;f<a.length;f++){var o;if((d=(o=a[f]).getAttribute("data-href"))===t||d===c)return e()}var u=document.createElement("link");u.rel="stylesheet",u.type="text/css",u.onload=e,u.onerror=function(e){var t=e&&e.target&&e.target.src||c,r=new Error("Loading CSS chunk "+i+" failed.\n("+t+")");r.request=t,n(r)},u.href=c,document.getElementsByTagName("head")[0].appendChild(u)}).then(function(){a[i]=0}));var r=l[i];if(0!==r)if(r)e.push(r[2]);else{var t=new Promise(function(e,t){r=l[i]=[e,t]});e.push(r[2]=t);var n,c=document.getElementsByTagName("head")[0],f=document.createElement("script");f.charset="utf-8",f.timeout=120,s.nc&&f.setAttribute("nonce",s.nc),f.src=s.p+"static/js/"+({}[i]||i)+"."+{1:"18016ef5",2:"f51ae852",3:"2d812e0c",4:"959e45b9",5:"031228ef",6:"da64b01a",7:"c20265b4",8:"3708fc80",9:"76d5a1f1",10:"64d279dc",11:"15bdaa3d",12:"a289339e",13:"6ed3fae5",14:"c0219476",15:"1b2dfa34",16:"c95df50e",17:"854d2668",18:"fe4e0156",19:"75b2ab08",20:"5cc3e2dd",21:"85a6bb34",22:"f5b6dab9",23:"873b678f",24:"299ad1b2",25:"26732315",26:"8ed938bb",27:"9e08b9c8",28:"8c5bf47d",29:"651315e7",30:"4de03612",31:"a827ef55",32:"9f8e8c89",33:"4e98a6ac",34:"8fa7acd9",35:"f7fd16e7",36:"c8a9136e",37:"7fd46dad",38:"ab859197",39:"242ef20f",40:"a8b763a6",41:"fe59cd2f"}[i]+".chunk.js",n=function(e){f.onerror=f.onload=null,clearTimeout(d);var t=l[i];if(0!==t){if(t){var r=e&&("load"===e.type?"missing":e.type),n=e&&e.target&&e.target.src,c=new Error("Loading chunk "+i+" failed.\n("+r+": "+n+")");c.type=r,c.request=n,t[1](c)}l[i]=void 0}};var d=setTimeout(function(){n({type:"timeout",target:f})},12e4);f.onerror=f.onload=n,c.appendChild(f)}return Promise.all(e)},s.m=o,s.c=r,s.d=function(e,t,r){s.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:r})},s.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},s.t=function(t,e){if(1&e&&(t=s(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var r=Object.create(null);if(s.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var n in t)s.d(r,n,function(e){return t[e]}.bind(null,n));return r},s.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return s.d(t,"a",t),t},s.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},s.p="/",s.oe=function(e){throw console.error(e),e};var t=window.webpackJsonp=window.webpackJsonp||[],n=t.push.bind(t);t.push=e,t=t.slice();for(var c=0;c<t.length;c++)e(t[c]);var p=n;u()}([])</script><script src="/static/js/42.e4ff5a7a.chunk.js"></script><script src="/static/js/main.763db4b1.chunk.js"></script></body></html>

@@ -1,2 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[7],{81:function(s,t,n){"use strict";n.r(t),t.default={title:"React Hooks vs Class",tags:["react","hook","class"],spoiler:"hooks vs class",getContent:function(){return n.e(16).then(n.bind(null,72))}}}}]);
-//# sourceMappingURL=7.ea93d973.chunk.js.map

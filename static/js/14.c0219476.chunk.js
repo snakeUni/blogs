@@ -1,0 +1,2 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[14],{125:function(t,e,n){"use strict";n.r(e),e.default={title:"A little About React",tags:["react","little"],spoiler:"a little about react",getContent:function(){return n.e(34).then(n.bind(null,87))}}}}]);
+//# sourceMappingURL=14.c0219476.chunk.js.map
