@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "@types/jest": "23.3.12",
-    "@types/node": "10.12.18",
     "@types/react": "^16.9.2",
     "@types/react-dom": "^16.9.0",
     "antd": "^3.22.0",
@@ -36,7 +35,8 @@
     "serve": "navi-scripts serve",
     "clean": "rimraf build",
     "deploy": "netlify deploy --dir=build",
-    "deploy:prod": "netlify deploy --dir=build --prod"
+    "deploy:prod": "yarn build && netlify deploy --dir=build --prod",
+    "deploy:pages": "yarn build && gh-pages -d build"
   },
   "eslintConfig": {
     "extends": "react-app"
